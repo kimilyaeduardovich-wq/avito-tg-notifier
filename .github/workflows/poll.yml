@@ -86,17 +86,18 @@ jobs:
       - name: Save seen-state to branch
         if: always()
         run: |
-          set -e
+          set -euo pipefail
           test -f data/seen.json || echo '{"accounts":{}}' > data/seen.json
-          git config user.name "avito-tg-notifier"
-          git config user.email "avito-tg-notifier@users.noreply.github.com"
           WORK=$(mktemp -d)
           cp data/seen.json "$WORK/seen.json"
           cd "$WORK"
           git init -q
+          git config user.name "avito-tg-notifier"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b avito-bot-state
           git add seen.json
-          git commit -m "state $(date -u +%Y-%m-%dT%H:%MZ)" || exit 0
+          git commit -m "state $(date -u +%Y-%m-%dT%H:%MZ)"
           git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git push -f origin avito-bot-state
           echo "State pushed to avito-bot-state"
+          wc -c seen.json
