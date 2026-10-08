@@ -85,6 +85,8 @@ jobs:
 
       - name: Save seen-state to branch
         if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           test -f data/seen.json || echo '{"accounts":{}}' > data/seen.json
