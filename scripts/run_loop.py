@@ -69,7 +69,8 @@ async def main() -> None:
 
     while True:
         cycle += 1
-        elapsed = time.monotonic() - started
+        cycle_started = time.monotonic()
+        elapsed = cycle_started - started
         if elapsed >= DURATION_SEC and cycle > 1:
             break
 
@@ -103,10 +104,13 @@ async def main() -> None:
         _push_state()
 
         elapsed = time.monotonic() - started
-        if elapsed + INTERVAL_SEC >= DURATION_SEC:
+        # Sleep so wall-clock between cycle starts ≈ INTERVAL_SEC (not interval+work).
+        work = time.monotonic() - cycle_started
+        sleep_for = max(0, INTERVAL_SEC - work)
+        if elapsed + sleep_for >= DURATION_SEC:
             break
-        log.info("sleep %ss", INTERVAL_SEC)
-        await asyncio.sleep(INTERVAL_SEC)
+        log.info("sleep %.0fs (work=%.0fs target=%ss)", sleep_for, work, INTERVAL_SEC)
+        await asyncio.sleep(sleep_for)
 
     log.info("Loop finished cycles=%s total_notified=%s", cycle, total_notified)
 
