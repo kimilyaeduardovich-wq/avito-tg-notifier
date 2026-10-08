@@ -60,12 +60,15 @@ Healthcheck: `GET /` → `{"status":"ok"}`.
 
 ## Стабильный бесплатный режим (без Mac)
 
-GitHub Actions опрашивает Авито **каждые 5 минут** и шлёт уведомления в Telegram.
-Mac не нужен: workflow в облаке GitHub.
+Опрос Авито **каждые 2 минуты**, уведомления в Telegram. Mac не нужен.
 
+- **Основной режим:** self-chain loop в GitHub Actions (~45 мин × опрос каждые 2 мин → сам ставит следующий run)
+- **Watchdog:** schedule `:00` / `:30` UTC, если цепочка оборвалась
+- **Состояние:** ветка `avito-bot-state` (не cache)
 - файл: `.github/workflows/poll.yml`
-- ручной запуск: Actions → *Avito poll → Telegram* → Run workflow
-- локально один цикл: `python -m scripts.run_once`
+- детали: `scripts/setup_cron_hint.md`
+- ручной старт: Actions → Run workflow → mode=`loop` (опционально `send_test_alert`)
+- локально: `python -m scripts.run_once` / `python -m scripts.run_loop`
 
 ## Локальный poller (запасной)
 
