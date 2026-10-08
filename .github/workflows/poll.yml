@@ -1,13 +1,15 @@
 name: Avito poll → Telegram
 
-# Primary trigger: external cron every 2 minutes → workflow_dispatch / repository_dispatch
-# schedule: backup only (GH min ~5m, often delayed on free/private)
+# Primary reliable trigger: external cron every 2 min → workflow_dispatch
+#   (see scripts/setup_cron_hint.md / scripts/cron_dispatch.example.sh)
+# GH schedule: two offset */5 crons ≈ every ~2–3 min as free backup (still can delay)
 on:
   workflow_dispatch: {}
   repository_dispatch:
     types: [avito-poll]
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "0,5,10,15,20,25,30,35,40,45,50,55 * * * *"
+    - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
 
 concurrency:
   group: avito-poll
