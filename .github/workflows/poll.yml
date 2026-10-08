@@ -1,0 +1,76 @@
+name: Avito poll → Telegram
+
+on:
+  schedule:
+    # каждые 5 минут (минимум GitHub Actions)
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: avito-poll
+  cancel-in-progress: false
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Restore seen-state
+        uses: actions/cache/restore@v4
+        with:
+          path: data/seen.json
+          key: seen-state-${{ github.run_id }}
+          restore-keys: |
+            seen-state-
+
+      - name: Write .env from secrets
+        env:
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          ACCOUNT_1_NAME: ${{ secrets.ACCOUNT_1_NAME }}
+          ACCOUNT_1_TG_BOT_TOKEN: ${{ secrets.ACCOUNT_1_TG_BOT_TOKEN }}
+          ACCOUNT_1_AVITO_CLIENT_ID: ${{ secrets.ACCOUNT_1_AVITO_CLIENT_ID }}
+          ACCOUNT_1_AVITO_CLIENT_SECRET: ${{ secrets.ACCOUNT_1_AVITO_CLIENT_SECRET }}
+          ACCOUNT_1_AVITO_USER_ID: ${{ secrets.ACCOUNT_1_AVITO_USER_ID }}
+          ACCOUNT_2_NAME: ${{ secrets.ACCOUNT_2_NAME }}
+          ACCOUNT_2_TG_BOT_TOKEN: ${{ secrets.ACCOUNT_2_TG_BOT_TOKEN }}
+          ACCOUNT_2_AVITO_CLIENT_ID: ${{ secrets.ACCOUNT_2_AVITO_CLIENT_ID }}
+          ACCOUNT_2_AVITO_CLIENT_SECRET: ${{ secrets.ACCOUNT_2_AVITO_CLIENT_SECRET }}
+          ACCOUNT_2_AVITO_USER_ID: ${{ secrets.ACCOUNT_2_AVITO_USER_ID }}
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          keys = [
+            "TG_CHAT_ID",
+            "ACCOUNT_1_NAME","ACCOUNT_1_TG_BOT_TOKEN","ACCOUNT_1_AVITO_CLIENT_ID",
+            "ACCOUNT_1_AVITO_CLIENT_SECRET","ACCOUNT_1_AVITO_USER_ID",
+            "ACCOUNT_2_NAME","ACCOUNT_2_TG_BOT_TOKEN","ACCOUNT_2_AVITO_CLIENT_ID",
+            "ACCOUNT_2_AVITO_CLIENT_SECRET","ACCOUNT_2_AVITO_USER_ID",
+          ]
+          lines = [f"{k}={os.environ.get(k,'')}" for k in keys]
+          Path(".env").write_text("\n".join(lines) + "\n", encoding="utf-8")
+          missing = [k for k in keys if not os.environ.get(k)]
+          if missing:
+            raise SystemExit(f"Missing secrets: {', '.join(missing)}")
+          print("env ok, keys=", len(keys))
+          PY
+
+      - name: Poll once
+        run: python -m scripts.run_once
+
+      - name: Save seen-state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: data/seen.json
+          key: seen-state-${{ github.run_id }}
