@@ -1,14 +1,20 @@
 name: Avito poll → Telegram
 
+# Primary trigger: external cron every 2 minutes → workflow_dispatch / repository_dispatch
+# schedule: backup only (GH min ~5m, often delayed on free/private)
 on:
-  schedule:
-    # каждые 5 минут (минимум GitHub Actions)
-    - cron: "*/5 * * * *"
   workflow_dispatch: {}
+  repository_dispatch:
+    types: [avito-poll]
+  schedule:
+    - cron: "*/5 * * * *"
 
 concurrency:
   group: avito-poll
   cancel-in-progress: false
+
+permissions:
+  contents: write
 
 jobs:
   poll:
@@ -16,6 +22,21 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Load seen-state from branch
+        run: |
+          mkdir -p data
+          if git fetch origin avito-bot-state:avito-bot-state 2>/dev/null; then
+            git show avito-bot-state:seen.json > data/seen.json 2>/dev/null \
+              || echo '{"accounts":{}}' > data/seen.json
+            echo "Loaded state from avito-bot-state"
+            wc -c data/seen.json
+          else
+            echo '{"accounts":{}}' > data/seen.json
+            echo "No state branch yet — starting empty"
+          fi
 
       - uses: actions/setup-python@v5
         with:
@@ -24,14 +45,6 @@ jobs:
 
       - name: Install deps
         run: pip install -r requirements.txt
-
-      - name: Restore seen-state
-        uses: actions/cache/restore@v4
-        with:
-          path: data/seen.json
-          key: seen-state-${{ github.run_id }}
-          restore-keys: |
-            seen-state-
 
       - name: Write .env from secrets
         env:
@@ -68,9 +81,20 @@ jobs:
       - name: Poll once
         run: python -m scripts.run_once
 
-      - name: Save seen-state
+      - name: Save seen-state to branch
         if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: data/seen.json
-          key: seen-state-${{ github.run_id }}
+        run: |
+          set -e
+          test -f data/seen.json || echo '{"accounts":{}}' > data/seen.json
+          git config user.name "avito-tg-notifier"
+          git config user.email "avito-tg-notifier@users.noreply.github.com"
+          WORK=$(mktemp -d)
+          cp data/seen.json "$WORK/seen.json"
+          cd "$WORK"
+          git init -q
+          git checkout -b avito-bot-state
+          git add seen.json
+          git commit -m "state $(date -u +%Y-%m-%dT%H:%MZ)" || exit 0
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push -f origin avito-bot-state
+          echo "State pushed to avito-bot-state"
