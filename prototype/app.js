@@ -1,19 +1,36 @@
-/* Ресепшн+ UI-прототип: имитация по docs/resepshn-tech-spec.md, без API */
+/* Ресепшн+ — демо на языке салона красоты. Без реальных интеграций. */
+
+const STAGE = {
+  cold: "Ещё присматривается",
+  warm: "Интересуется",
+  hot: "Почти записалась",
+  booked: "Записалась",
+  lost: "Ушла без записи",
+  cancelled: "Отменила",
+};
+
+const QUALITY = {
+  ok: "Всё ок",
+  weak: "Есть слабые места",
+  fail: "Разговор сорвался",
+};
 
 const REASON_LABELS = {
-  slow_reply: "Медленный ответ",
-  price_dump: "Цена мимо прайса",
-  no_slot: "Не предложили окно",
-  no_followup: "Нет follow-up",
-  price_objection: "Возражение по цене",
-  fear: "Страх / сомнение",
-  no_alternative: "Нет альтернативы",
-  lost_to_competitor: "Ушёл к конкуренту",
-  waiting_client: "Ждём клиента",
-  no_second_offer: "Нет второго оффера",
-  admin_missed: "Пропуск администратора",
-  client_health: "Противопоказания (не потеря)",
+  slow_reply: "Долго не отвечали",
+  price_dump: "Назвали цену не из прайса",
+  no_slot: "Не предложили конкретное время",
+  no_followup: "Обещали вернуться — и пропали",
+  price_objection: "Смутила цена",
+  fear: "Гостья сомневается / боится",
+  no_alternative: "Не предложили другой вариант",
+  lost_to_competitor: "Ушла к другому салону",
+  waiting_client: "Ждём ответа гостьи",
+  no_second_offer: "Не сделали второе предложение",
+  admin_missed: "Администратор упустил диалог",
+  client_health: "Противопоказания — не потеря выручки",
 };
+
+const ROLE_LABEL = { owner: "владелец", admin: "администратор", master: "мастер" };
 
 const DIALOGS = [
   {
@@ -22,6 +39,7 @@ const DIALOGS = [
     channelLabel: "Авито",
     client: "Анна К.",
     manager: "admin",
+    managerName: "Аня",
     unanswered: true,
     waitMin: 1320,
     preview: "Жду уже второй день",
@@ -35,38 +53,38 @@ const DIALOGS = [
     analysis: {
       stage: "hot",
       stage_confidence: 0.86,
-      want: "Окрашивание корней в субботу",
-      outcome: "Диалог завис: цена спорная, слот не предложен, обещание без follow-up",
+      want: "Хочет окрашивание корней на субботу",
+      outcome: "Переписка зависла: цена не сошлась с прайсом, время не предложили, обещали написать и пропали",
       reasons: [
-        { code: "price_dump", quote: "От 3500", explain: "В БЗ от 4500 ₽, акция не названа" },
-        { code: "no_slot", quote: "на субботу есть окошко?", explain: "Конкретное время не предложено" },
-        { code: "no_followup", quote: "уточню и напишу", explain: "Обещание сорвано > 24 ч" },
-        { code: "slow_reply", quote: "Жду уже второй день", explain: "first_reply / ожидание вне SLA" },
+        { code: "price_dump", quote: "От 3500", explain: "В прайсе салона от 4 500 ₽, акцию не назвали" },
+        { code: "no_slot", quote: "на субботу есть окошко?", explain: "Не предложили два конкретных окна" },
+        { code: "no_followup", quote: "уточню и напишу", explain: "Обещание висит больше суток" },
+        { code: "slow_reply", quote: "Жду уже второй день", explain: "Гостья явно ждёт — это критично для записи" },
       ],
       lost_sum: 4500,
       admin_score: 2,
-      next_step: "Сегодня до 15:00 извиниться, назвать цену из прайса и дать 2 окна",
-      notes: "3+ причин → quality=fail по правилам",
+      next_step: "Сегодня до 15:00 извиниться, назвать цену из прайса и предложить 2 окна на субботу",
+      notes: "Сразу несколько ошибок — разговор на грани потери",
       engine: "llm",
       quality: "fail",
       suggestions: [
         {
-          label: "Дожим",
+          label: "Дожать к записи",
           recommended: true,
-          goal: "booking",
-          text: "Анна, простите за задержку — это наша ошибка. Окрашивание корней от 4 500 ₽. На субботу свободно 11:00 и 15:30. Какое окно закрепить?",
+          goal: "записать",
+          text: "Анна, простите за задержку — это наша ошибка. Окрашивание корней от 4 500 ₽. На субботу свободно 11:00 и 15:30. Какое время вам удобнее закрепить?",
         },
         {
-          label: "Мягко",
+          label: "Мягко и спокойно",
           recommended: false,
-          goal: "trust",
-          text: "Анна, спасибо что написали ещё раз. Уточнила прайс: от 4 500 ₽. Могу подобрать удобное время на субботу — удобнее утро или день?",
+          goal: "вернуть доверие",
+          text: "Анна, спасибо, что написали ещё раз. Уточнила по прайсу: от 4 500 ₽. Могу подобрать удобное время на субботу — вам удобнее утро или день?",
         },
         {
-          label: "Через доверие",
+          label: "Через заботу",
           recommended: false,
-          goal: "care",
-          text: "Понимаю, неприятно ждать. С моей стороны промах. Готова сразу зафиксировать слот и прислать подтверждение в этот чат.",
+          goal: "поддержать",
+          text: "Понимаю, неприятно ждать. С моей стороны промах. Готова сразу зафиксировать время и прислать подтверждение в этот чат.",
         },
       ],
     },
@@ -77,6 +95,7 @@ const DIALOGS = [
     channelLabel: "Telegram",
     client: "Мария",
     manager: "admin",
+    managerName: "Аня",
     unanswered: false,
     waitMin: 8,
     preview: "Ок, давайте 16:30",
@@ -89,28 +108,29 @@ const DIALOGS = [
     analysis: {
       stage: "booked",
       stage_confidence: 0.94,
-      want: "Перенос маникюра на вечер",
-      outcome: "Запись перенесена на 16:30",
+      want: "Перенести маникюр на вечер",
+      outcome: "Перенесли на 16:30 — гостья записана",
       reasons: [],
       lost_sum: 0,
       admin_score: 5,
-      next_step: "Напоминание за 24 ч и 2 ч",
-      notes: "Есть конкретный слот и закрытие",
+      next_step: "Напомнить за сутки и за 2 часа до визита",
+      notes: "Есть конкретное время и закрытие — образец хорошей работы",
       engine: "rules",
       quality: "ok",
       suggestions: [
-        { label: "Дожим", recommended: false, goal: "booking", text: "Если вдруг 16:30 перестанет подходить — напишите, подберём другое окно." },
-        { label: "Мягко", recommended: true, goal: "care", text: "Отлично, ждём вас завтра в 16:30. Если понадобится перенос — лучше предупредить заранее." },
-        { label: "Через доверие", recommended: false, goal: "trust", text: "Закрепила. Пришлю напоминание перед визитом." },
+        { label: "Дожать к записи", recommended: false, goal: "записать", text: "Если вдруг 16:30 перестанет подходить — напишите, подберём другое окошко." },
+        { label: "Мягко и спокойно", recommended: true, goal: "поддержать", text: "Отлично, ждём вас завтра в 16:30. Если понадобится перенос — лучше предупредить заранее." },
+        { label: "Через заботу", recommended: false, goal: "вернуть доверие", text: "Закрепила. Перед визитом пришлю короткое напоминание." },
       ],
     },
   },
   {
     id: "d3",
     channel: "vk",
-    channelLabel: "VK",
+    channelLabel: "ВКонтакте",
     client: "Елена П.",
     manager: "owner",
+    managerName: "Владелец",
     unanswered: true,
     waitMin: 55,
     preview: "А сколько тогда выйдет?",
@@ -122,27 +142,27 @@ const DIALOGS = [
     analysis: {
       stage: "warm",
       stage_confidence: 0.79,
-      want: "Ламинирование ресниц со скидкой новому клиенту",
-      outcome: "Скидка названа вне БЗ; цена и слот не закрыты",
+      want: "Первое ламинирование ресниц со скидкой для новой гостьи",
+      outcome: "Скидку назвали «на глаз», цену и время так и не закрыли",
       reasons: [
-        { code: "price_dump", quote: "всегда скидываем новым 20%", explain: "В акциях салона скидка не 20% «всегда»" },
-        { code: "no_slot", quote: "когда ближайшее окно?", explain: "Окно не предложено" },
+        { code: "price_dump", quote: "всегда скидываем новым 20%", explain: "В акциях салона нет «всегда −20%» — только актуальная акция из прайса" },
+        { code: "no_slot", quote: "когда ближайшее окно?", explain: "Не предложили конкретные часы" },
       ],
       lost_sum: 3500,
       admin_score: 3,
-      next_step: "Назвать цену из прайса с корректной акцией и 2 слота",
-      notes: "1–2 причины → quality=weak",
+      next_step: "Назвать цену из прайса с правильной акцией и дать 2 свободных окна",
+      notes: "Гостья ещё тёплая — можно вернуть сегодня",
       engine: "llm",
       quality: "weak",
       suggestions: [
         {
-          label: "Дожим",
+          label: "Дожать к записи",
           recommended: true,
-          goal: "booking",
-          text: "Елена, ламинирование — 3 500 ₽. Для новых до 31.10 −15% (итог 2 975 ₽). Окна: завтра 12:00 и 17:30. Какое удобнее?",
+          goal: "записать",
+          text: "Елена, ламинирование — 3 500 ₽. Для новых до 31.10 скидка −15% (итог 2 975 ₽). Окна: завтра 12:00 и 17:30. Какое удобнее?",
         },
-        { label: "Мягко", recommended: false, goal: "trust", text: "Уточнила условия: для новых −15% до конца месяца. Могу предложить два окна на этой неделе." },
-        { label: "Через доверие", recommended: false, goal: "care", text: "Важно назвать точную цену из прайса. Напишите удобный день — подберу мастера." },
+        { label: "Мягко и спокойно", recommended: false, goal: "вернуть доверие", text: "Уточнила условия: для новых −15% до конца месяца. Могу предложить два окна на этой неделе." },
+        { label: "Через заботу", recommended: false, goal: "поддержать", text: "Важно назвать точную цену из прайса. Напишите удобный день — подберу мастера." },
       ],
     },
   },
@@ -152,9 +172,10 @@ const DIALOGS = [
     channelLabel: "Telegram",
     client: "Ирина",
     manager: "admin",
+    managerName: "Аня",
     unanswered: true,
     waitMin: 1800,
-    preview: "…",
+    preview: "Тишина после вопроса про пятницу",
     messages: [
       { role: "client", text: "Можно записаться на стрижку на пятницу?", time: "пн 10:00" },
       { role: "staff", text: "Да, напишите удобное время", time: "пн 12:30" },
@@ -163,40 +184,40 @@ const DIALOGS = [
       stage: "cold",
       stage_confidence: 0.71,
       want: "Стрижка в пятницу",
-      outcome: "Клиент замолчал после общего вопроса без слотов",
+      outcome: "Гостья замолчала — спросили «когда удобно», но сами окна не предложили",
       reasons: [
-        { code: "no_slot", quote: "напишите удобное время", explain: "Нет конкретных окон" },
-        { code: "no_followup", quote: "…", explain: "Тишина > 24 ч, реактивация не отправлена" },
+        { code: "no_slot", quote: "напишите удобное время", explain: "Лучше сразу дать 2–3 свободных часа" },
+        { code: "no_followup", quote: "тишина", explain: "Больше суток нет второго сообщения — пора мягко написать снова" },
       ],
       lost_sum: 3200,
       admin_score: 2,
-      next_step: "Одно короткое сообщение с 2 окнами в пятницу",
+      next_step: "Одно короткое сообщение с двумя окнами в пятницу",
       notes: "",
       engine: "rules",
       quality: "weak",
       suggestions: [
         {
-          label: "Дожим",
+          label: "Дожать к записи",
           recommended: true,
-          goal: "booking",
+          goal: "записать",
           text: "Ирина, по пятнице ещё есть 11:00 и 16:00 на стрижку (3 200 ₽). Закрепить одно из окон?",
         },
-        { label: "Мягко", recommended: false, goal: "care", text: "Если пятница ещё актуальна — напишите, подберу время." },
-        { label: "Через доверие", recommended: false, goal: "trust", text: "Могу сразу предложить два свободных окна, без лишних вопросов." },
+        { label: "Мягко и спокойно", recommended: false, goal: "поддержать", text: "Если пятница ещё актуальна — напишите, подберу время." },
+        { label: "Через заботу", recommended: false, goal: "вернуть доверие", text: "Могу сразу предложить два свободных окна, без лишних вопросов." },
       ],
     },
   },
 ];
 
 const CHANNELS = [
-  { id: "telegram", title: "Telegram", desc: "Бот салона · aiogram 3 · webhook/polling", mode: "api", allowed: true },
-  { id: "vk", title: "ВКонтакте", desc: "Сообщения сообщества · Callback API", mode: "api", allowed: true },
-  { id: "max", title: "MAX", desc: "Bot API платформы", mode: "api", allowed: true },
-  { id: "widget", title: "Виджет сайта", desc: "Свой JS + SSE · страница записи", mode: "api", allowed: true },
-  { id: "whatsapp", title: "WhatsApp", desc: "Только Cloud API / WABA", mode: "waba", allowed: true },
-  { id: "instagram", title: "Instagram", desc: "Только Messaging API · OAuth", mode: "oauth", allowed: true },
-  { id: "wa_qr", title: "WhatsApp с телефона", desc: "QR / личная сессия", mode: "blocked", allowed: false },
-  { id: "tg_personal", title: "Личный Telegram", desc: "Userbot / QR", mode: "blocked", allowed: false },
+  { id: "telegram", title: "Telegram", desc: "Бот салона: гости пишут вам в Telegram", mode: "api", allowed: true },
+  { id: "vk", title: "ВКонтакте", desc: "Сообщения сообщества — привычный канал для многих гостей", mode: "api", allowed: true },
+  { id: "max", title: "MAX", desc: "Бот в мессенджере MAX", mode: "api", allowed: true },
+  { id: "widget", title: "Окно на сайте", desc: "Кнопка «записаться» на сайте салона", mode: "api", allowed: true },
+  { id: "whatsapp", title: "WhatsApp для бизнеса", desc: "Официальный бизнес-номер WhatsApp", mode: "waba", allowed: true },
+  { id: "instagram", title: "Instagram Direct", desc: "Директ бизнес-аккаунта через официальный вход", mode: "oauth", allowed: true },
+  { id: "wa_qr", title: "WhatsApp с телефона", desc: "Личный WhatsApp через QR", mode: "blocked", allowed: false },
+  { id: "tg_personal", title: "Личный Telegram", desc: "Обычный аккаунт администратора", mode: "blocked", allowed: false },
 ];
 
 const SERVICES = [
@@ -207,28 +228,28 @@ const SERVICES = [
 ];
 
 const MASTERS = [
-  { name: "Ольга", spec: "волосы", schedule: "пн–сб 10:00–20:00 · шаг 30 · буфер 15" },
-  { name: "Катя", spec: "ногти", schedule: "вт–вс 11:00–19:00 · шаг 30 · буфер 15" },
+  { name: "Ольга", spec: "окрашивание и стрижки", schedule: "пн–сб 10:00–20:00 · окна по 30 мин · перерыв 15 мин" },
+  { name: "Катя", spec: "маникюр и педикюр", schedule: "вт–вс 11:00–19:00 · окна по 30 мин · перерыв 15 мин" },
 ];
 
 const USERS = [
-  { name: "Владелец", role: "owner", phone: "+7···01" },
-  { name: "Администратор Аня", role: "admin", phone: "+7···22" },
-  { name: "Мастер Ольга", role: "master", phone: "+7···33" },
+  { name: "Вы", role: "Владелец", phone: "+7 ··· 01" },
+  { name: "Аня", role: "Администратор", phone: "+7 ··· 22" },
+  { name: "Ольга", role: "Мастер", phone: "+7 ··· 33" },
 ];
 
 const BOOKINGS = [
-  { time: "11:00", client: "Мария", service: "Маникюр", master: "Катя", status: "confirmed", remind: "24ч отправлено · 2ч в 09:00" },
-  { time: "14:30", client: "Света", service: "Стрижка", master: "Ольга", status: "new", remind: "ждёт подтверждения" },
-  { time: "16:30", client: "Мария (перенос)", service: "Маникюр", master: "Катя", status: "confirmed", remind: "2ч запланировано" },
-  { time: "09:00", client: "Даша", service: "Окрашивание", master: "Ольга", status: "no_show", remind: "неявка отмечена" },
+  { time: "11:00", client: "Мария", service: "Маникюр", master: "Катя", status: "confirmed", statusLabel: "Подтверждена", remind: "Напомнили за сутки · ещё раз в 09:00" },
+  { time: "14:30", client: "Света", service: "Стрижка", master: "Ольга", status: "new", statusLabel: "Ждёт подтверждения", remind: "Ждём ответ гостьи" },
+  { time: "16:30", client: "Мария", service: "Маникюр (перенос)", master: "Катя", status: "confirmed", statusLabel: "Подтверждена", remind: "Напоминание за 2 часа запланировано" },
+  { time: "09:00", client: "Даша", service: "Окрашивание", master: "Ольга", status: "no_show", statusLabel: "Неявка", remind: "Не пришла" },
 ];
 
 const METRICS_7 = [
-  { val: "18 мин", lbl: "Скорость первого ответа", formula: "медиана first_reply_sec (без автоответа)" },
-  { val: "28%", lbl: "Доля просроченных", formula: "first_reply_sec > 900 / все диалоги" },
-  { val: "31%", lbl: "Конверсия в запись", formula: "диалоги с booking / все за период" },
-  { val: "11 200 ₽", lbl: "Упущенная сумма", formula: "Σ lost_sum по lost|cold|warm без записи" },
+  { val: "18 мин", lbl: "Как быстро отвечаем впервые", formula: "Среднее время до первого ответа администратора" },
+  { val: "28%", lbl: "Ответили слишком поздно", formula: "Доля диалогов, где первый ответ дольше 15 минут" },
+  { val: "31%", lbl: "Довели до записи", formula: "Сколько переписок закончились записью к мастеру" },
+  { val: "11 200 ₽", lbl: "Упустили выручки", formula: "Сумма услуг, которые не состоялись из‑за срывов в переписке" },
 ];
 
 const REASONS_STATS = [
@@ -239,16 +260,16 @@ const REASONS_STATS = [
 ];
 
 const ADMIN_STATS = [
-  { name: "Аня (admin)", score: "3.1", dialogs: 42, conversion: "29%" },
-  { name: "Владелец", score: "3.8", dialogs: 18, conversion: "39%" },
+  { name: "Аня", score: "3,1", dialogs: 42, conversion: "29%" },
+  { name: "Владелец", score: "3,8", dialogs: 18, conversion: "39%" },
 ];
 
 const FORMULAS = [
-  "Ушли в тишину = is_unanswered и now − last_message_at > 24 ч",
-  "Возврат уснувших = реактивированные с booking / все реактивированные",
-  "Неявки = no_show / все confirmed",
-  "Возвратные = клиенты с 2+ визитами / все с визитом",
-  "admin_score 1..5 — только правила (SLA, слот, цена, follow-up), не ИИ",
+  "«Ждут ответа» — гостья написала, а салон молчит больше суток",
+  "«Вернули уснувших» — написали повторно, и гостья всё‑таки записалась",
+  "«Неявки» — подтвердили визит, но не пришли",
+  "«Постоянные» — гости с двумя и более визитами",
+  "Оценка администратора считается по скорости, точности прайса и тому, предложили ли время — не «на глаз»",
 ];
 
 let filter = "all";
@@ -268,7 +289,7 @@ function toast(text) {
   clearTimeout(toast._t);
   toast._t = setTimeout(() => {
     el.hidden = true;
-  }, 2400);
+  }, 2600);
 }
 
 function wait(ms) {
@@ -280,22 +301,27 @@ function escapeHtml(s) {
 }
 
 function formatWait(min) {
-  if (min < 60) return `${min} мин ожидания`;
+  if (min < 60) return `ждёт ${min} мин`;
   const h = Math.floor(min / 60);
-  return `${h} ч ${min % 60} мин ожидания`;
+  const m = min % 60;
+  if (h >= 24) {
+    const d = Math.floor(h / 24);
+    return `ждёт уже ${d} ${d === 1 ? "день" : "дня"}`;
+  }
+  return m ? `ждёт ${h} ч ${m} мин` : `ждёт ${h} ч`;
 }
 
 function setView(name) {
   $$(".view").forEach((v) => v.classList.toggle("active", v.id === `view-${name}`));
   $$(".nav-item").forEach((b) => b.classList.toggle("active", b.dataset.view === name));
   const titles = {
-    inbox: "Инбокс",
-    analytics: "Аналитика",
-    reminders: "Записи на день",
-    settings: "Настройки",
-    channels: "Каналы",
-    booking: "Публичная запись",
-    stand: "Стенд разбора",
+    inbox: "Переписки",
+    analytics: "Как идут продажи",
+    reminders: "Записи на сегодня",
+    settings: "Салон и прайс",
+    channels: "Откуда пишут гости",
+    booking: "Онлайн-запись",
+    stand: "Разобрать свой чат",
   };
   $("#viewTitle").textContent = titles[name] || name;
 }
@@ -317,27 +343,27 @@ function renderDialogList() {
   const list = filteredDialogs();
   const root = $("#dialogList");
   if (!list.length) {
-    root.innerHTML = `<div class="empty-pane muted">Нет диалогов по фильтру</div>`;
+    root.innerHTML = `<div class="empty-pane muted">По этому фильтру пока никого нет</div>`;
     return;
   }
   root.innerHTML = list
     .map((d) => {
       const money =
         d.analysis.stage === "booked"
-          ? `<span class="money ok">записан</span>`
+          ? `<span class="money ok">запись есть</span>`
           : d.analysis.lost_sum
-            ? `<span class="money lost">упущено ${d.analysis.lost_sum.toLocaleString("ru-RU")} ₽</span>`
+            ? `<span class="money lost">−${d.analysis.lost_sum.toLocaleString("ru-RU")} ₽</span>`
             : "";
       const wait = d.unanswered
         ? `<span class="wait-bad">${formatWait(d.waitMin)}</span>`
-        : `<span class="muted">${d.waitMin} мин до ответа</span>`;
+        : `<span class="muted">ответили за ${d.waitMin} мин</span>`;
       return `
       <button type="button" class="dialog-item ${d.id === currentId ? "active" : ""}" data-id="${d.id}">
         <div class="who">${escapeHtml(d.client)}</div>
         <div class="preview">${escapeHtml(d.preview)}</div>
         <div class="meta">
           <span class="pill pill-channel">${escapeHtml(d.channelLabel)}</span>
-          <span class="stage stage-${d.analysis.stage}">${d.analysis.stage}</span>
+          <span class="stage stage-${d.analysis.stage}">${STAGE[d.analysis.stage]}</span>
           ${wait}
           ${money}
         </div>
@@ -347,30 +373,30 @@ function renderDialogList() {
 }
 
 function renderAnalysis(a) {
-  const engineClass = a.engine === "rules" ? "rules" : "";
+  const deep = a.engine === "llm";
   const reasons = a.reasons.length
     ? a.reasons
         .map(
           (r) => `<div class="reason">
-        <code>${r.code}</code> ${escapeHtml(REASON_LABELS[r.code] || r.code)}
+        <strong>${escapeHtml(REASON_LABELS[r.code] || r.code)}</strong>
         <div class="muted">«${escapeHtml(r.quote)}» — ${escapeHtml(r.explain)}</div>
       </div>`
         )
         .join("")
-    : `<div class="muted">Причин потери нет</div>`;
+    : `<div class="muted">Явных ошибок в диалоге нет — можно спокойно вести к записи</div>`;
 
   return `
-    <div class="row" style="margin:0 0 8px;justify-content:space-between">
-      <span class="stage stage-${a.stage}">${a.stage}</span>
-      <span class="engine-tag ${engineClass}">engine: ${a.engine} · ${a.quality}</span>
+    <div class="row" style="margin:0 0 8px;justify-content:space-between;align-items:center">
+      <span class="stage stage-${a.stage}">${STAGE[a.stage]}</span>
+      <span class="engine-tag ${deep ? "" : "rules"}">${deep ? "Полный разбор" : "Быстрая проверка"} · ${QUALITY[a.quality]}</span>
     </div>
     <div class="kv">
-      <div><strong>Что хотел</strong><span>${escapeHtml(a.want)}</span></div>
-      <div><strong>Чем закончилось</strong><span>${escapeHtml(a.outcome)}</span></div>
-      <div><strong>Что делать сейчас</strong><span>${escapeHtml(a.next_step)}</span></div>
-      <div><strong>admin_score / lost_sum</strong><span>${a.admin_score}/5 · ${a.lost_sum.toLocaleString("ru-RU")} ₽ · conf ${Math.round(a.stage_confidence * 100)}%</span></div>
+      <div><strong>Чего хочет гостья</strong><span>${escapeHtml(a.want)}</span></div>
+      <div><strong>Чем закончилось сейчас</strong><span>${escapeHtml(a.outcome)}</span></div>
+      <div><strong>Что сделать прямо сейчас</strong><span>${escapeHtml(a.next_step)}</span></div>
+      <div><strong>Оценка работы / упущенная сумма</strong><span>${a.admin_score} из 5 · ${a.lost_sum ? a.lost_sum.toLocaleString("ru-RU") + " ₽" : "нет потерь"}</span></div>
     </div>
-    <strong class="tiny muted">Причины (из правил)</strong>
+    <strong class="tiny muted">Почему так вышло</strong>
     ${reasons}
     ${a.notes ? `<p class="tiny muted mt">${escapeHtml(a.notes)}</p>` : ""}
   `;
@@ -382,11 +408,11 @@ function renderSuggestions(a) {
       (s, i) => `
     <div class="suggestion ${s.recommended ? "rec" : ""}">
       <div class="lab">
-        <span>${escapeHtml(s.label)}${s.recommended ? " · рекомендую" : ""}</span>
+        <span>${escapeHtml(s.label)}${s.recommended ? " · лучше так" : ""}</span>
         <span class="muted">${escapeHtml(s.goal)}</span>
       </div>
       <div class="txt">${escapeHtml(s.text)}</div>
-      <button type="button" class="btn ghost sm" data-suggest="${i}">Вставить в ответ</button>
+      <button type="button" class="btn ghost sm" data-suggest="${i}">Взять этот текст</button>
     </div>`
     )
     .join("");
@@ -403,11 +429,11 @@ function openDialog(id) {
   $("#dialogHeader").innerHTML = `
     <div>
       <h2>${escapeHtml(d.client)}</h2>
-      <div class="muted">менеджер: ${d.manager} · стадия из разбора в очереди</div>
+      <div class="muted">ведёт ${escapeHtml(d.managerName)} · ${STAGE[d.analysis.stage].toLowerCase()}</div>
     </div>
     <div class="row" style="margin:0">
       <span class="pill pill-channel">${escapeHtml(d.channelLabel)}</span>
-      <span class="stage stage-${d.analysis.stage}">${d.analysis.stage}</span>
+      <span class="stage stage-${d.analysis.stage}">${STAGE[d.analysis.stage]}</span>
     </div>`;
 
   $("#messages").innerHTML = d.messages
@@ -424,14 +450,12 @@ function openDialog(id) {
 async function reanalyze() {
   const d = DIALOGS.find((x) => x.id === currentId);
   if (!d) return;
-  $("#analysisBody").innerHTML = `<p class="muted">Задача в очереди RQ… debounce 2 мин (в демо 1.2 с)</p>`;
+  $("#analysisBody").innerHTML = `<p class="muted">Смотрим переписку… обычно несколько секунд</p>`;
   await wait(1200);
-  // imitate fallback note
-  const copy = { ...d.analysis, engine: Math.random() > 0.3 ? "llm" : "rules" };
-  d.analysis = copy;
-  $("#analysisBody").innerHTML = renderAnalysis(copy);
-  renderSuggestions(copy);
-  toast("Разбор записан в analysis (демо). Страница читает готовое.");
+  d.analysis = { ...d.analysis, engine: Math.random() > 0.3 ? "llm" : "rules" };
+  $("#analysisBody").innerHTML = renderAnalysis(d.analysis);
+  renderSuggestions(d.analysis);
+  toast("Разбор обновлён. Можно брать готовый ответ справа.");
 }
 
 function renderChannels() {
@@ -440,17 +464,19 @@ function renderChannels() {
       return `<article class="channel blocked">
         <span class="status block">не подключаем</span>
         <h3>${c.title}</h3>
-        <p>${c.desc}. По ТЗ §8 — принципиальный запрет (риск блокировки номера).</p>
+        <p>${c.desc}. Так защищаем номер салона от блокировок.</p>
         <button type="button" class="btn ghost" disabled>Недоступно</button>
       </article>`;
     }
     const on = channelState[c.id] === "on";
+    const action =
+      c.mode === "oauth" ? "Войти через Instagram" : c.mode === "waba" ? "Подключить WhatsApp" : "Подключить";
     return `<article class="channel">
-      <span class="status ${on ? "on" : "off"}">${on ? "подключено (демо)" : "не подключено"}</span>
+      <span class="status ${on ? "on" : "off"}">${on ? "подключено" : "ещё не подключено"}</span>
       <h3>${c.title}</h3>
       <p>${c.desc}</p>
       <button type="button" class="btn ${on ? "ghost" : "primary"}" data-connect="${c.id}">
-        ${on ? "Отключить" : c.mode === "oauth" ? "OAuth (демо)" : c.mode === "waba" ? "WABA (демо)" : "Подключить API"}
+        ${on ? "Отключить" : action}
       </button>
     </article>`;
   }).join("");
@@ -462,16 +488,14 @@ function connectChannel(id) {
   if (channelState[id] === "on") {
     channelState[id] = "off";
     renderChannels();
-    toast(`${ch.title}: отключено (демо)`);
+    toast(`${ch.title}: отключили`);
     return;
   }
   openModal(`
     <h2 style="margin:0 0 8px;font-family:var(--display)">${escapeHtml(ch.title)}</h2>
-    <p class="lead">Имитация официального подключения. Реальные запросы не уходят. Токен в проде — Fernet в credentials_enc.</p>
-    <label class="field-label">Токен / client id (фейк)</label>
-    <input readonly value="demo_${id}_••••••••" />
+    <p class="lead">В демо подключение имитируется. В рабочей версии вы просто подтверждаете доступ салона — без сложных настроек на экране.</p>
     <div class="row">
-      <button type="button" class="btn primary" id="saveCh">Сохранить</button>
+      <button type="button" class="btn primary" id="saveCh">Подключить</button>
       <button type="button" class="btn ghost" id="cancelCh">Отмена</button>
     </div>
   `);
@@ -479,7 +503,7 @@ function connectChannel(id) {
     channelState[id] = "on";
     closeModal();
     renderChannels();
-    toast(`${ch.title}: подключено (демо)`);
+    toast(`${ch.title}: готово, сообщения появятся в «Переписках»`);
   };
   $("#cancelCh").onclick = closeModal;
 }
@@ -501,13 +525,13 @@ function renderAnalytics() {
     (m) => `<div class="metric"><div class="val">${m.val}</div><div class="lbl">${m.lbl}</div><div class="formula">${m.formula}</div></div>`
   ).join("");
   $("#reasonsTable").innerHTML =
-    `<thead><tr><th>Код</th><th>Доля</th><th>Сумма</th></tr></thead><tbody>` +
+    `<thead><tr><th>Причина</th><th>Как часто</th><th>Сколько денег</th></tr></thead><tbody>` +
     REASONS_STATS.map(
-      (r) => `<tr><td><code>${r.code}</code><div class="tiny muted">${REASON_LABELS[r.code]}</div></td><td>${r.share}</td><td>${r.sum}</td></tr>`
+      (r) => `<tr><td>${REASON_LABELS[r.code]}</td><td>${r.share}</td><td>${r.sum}</td></tr>`
     ).join("") +
     `</tbody>`;
   $("#adminsTable").innerHTML =
-    `<thead><tr><th>Кто</th><th>Score</th><th>Диалоги</th><th>Конверсия</th></tr></thead><tbody>` +
+    `<thead><tr><th>Кто</th><th>Оценка</th><th>Диалогов</th><th>Довели до записи</th></tr></thead><tbody>` +
     ADMIN_STATS.map((a) => `<tr><td>${a.name}</td><td>${a.score}</td><td>${a.dialogs}</td><td>${a.conversion}</td></tr>`).join("") +
     `</tbody>`;
   $("#formulasList").innerHTML = FORMULAS.map((f) => `<li>${escapeHtml(f)}</li>`).join("");
@@ -515,13 +539,13 @@ function renderAnalytics() {
 
 function renderReminders() {
   $("#bookingsTable").innerHTML =
-    `<thead><tr><th>Время</th><th>Клиент</th><th>Услуга</th><th>Мастер</th><th>Статус</th><th>Напоминания</th><th></th></tr></thead><tbody>` +
+    `<thead><tr><th>Время</th><th>Гостья</th><th>Услуга</th><th>Мастер</th><th>Статус</th><th>Напоминания</th><th></th></tr></thead><tbody>` +
     BOOKINGS.map(
       (b, i) => `<tr>
       <td>${b.time}</td><td>${b.client}</td><td>${b.service}</td><td>${b.master}</td>
-      <td><span class="stage stage-${b.status === "confirmed" || b.status === "new" ? "booked" : "lost"}">${b.status}</span></td>
+      <td><span class="stage stage-${b.status === "no_show" ? "lost" : "booked"}">${b.statusLabel}</span></td>
       <td class="tiny muted">${b.remind}</td>
-      <td>${b.status === "confirmed" || b.status === "new" ? `<button type="button" class="linkish" data-noshow="${i}">Неявка</button>` : "—"}</td>
+      <td>${b.status === "confirmed" || b.status === "new" ? `<button type="button" class="linkish" data-noshow="${i}">Не пришла</button>` : "—"}</td>
     </tr>`
     ).join("") +
     `</tbody>`;
@@ -529,23 +553,22 @@ function renderReminders() {
 
 function renderSettings() {
   $("#servicesTable").innerHTML =
-    `<thead><tr><th>Услуга</th><th>Цена</th><th>Мин</th></tr></thead><tbody>` +
-    SERVICES.map((s) => `<tr><td>${s.name}</td><td>${s.price.toLocaleString("ru-RU")} ₽</td><td>${s.duration}</td></tr>`).join("") +
+    `<thead><tr><th>Услуга</th><th>Цена</th><th>Длительность</th></tr></thead><tbody>` +
+    SERVICES.map((s) => `<tr><td>${s.name}</td><td>${s.price.toLocaleString("ru-RU")} ₽</td><td>${s.duration} мин</td></tr>`).join("") +
     `</tbody>`;
   $("#mastersList").innerHTML = MASTERS.map(
     (m) => `<div class="master-card"><strong>${m.name}</strong> · ${m.spec}<div class="tiny muted">${m.schedule}</div></div>`
   ).join("");
   $("#usersTable").innerHTML =
     `<thead><tr><th>Имя</th><th>Роль</th><th>Телефон</th></tr></thead><tbody>` +
-    USERS.map((u) => `<tr><td>${u.name}</td><td><code>${u.role}</code></td><td>${u.phone}</td></tr>`).join("") +
+    USERS.map((u) => `<tr><td>${u.name}</td><td>${u.role}</td><td>${u.phone}</td></tr>`).join("") +
     `</tbody>`;
 }
 
 function renderBookingPublic() {
-  $("#bookService").innerHTML = SERVICES.map((s) => `<option>${s.name} — ${s.price} ₽</option>`).join("");
-  const masterSel = $("#bookMaster");
-  masterSel.innerHTML =
-    `<option value="any">Любой свободный</option>` + MASTERS.map((m) => `<option>${m.name}</option>`).join("");
+  $("#bookService").innerHTML = SERVICES.map((s) => `<option>${s.name} — ${s.price.toLocaleString("ru-RU")} ₽</option>`).join("");
+  $("#bookMaster").innerHTML =
+    `<option value="any">Кто свободен</option>` + MASTERS.map((m) => `<option>${m.name}</option>`).join("");
   const slots = ["11:00", "12:30", "15:30", "17:00", "18:30"];
   $("#bookSlots").innerHTML = slots
     .map((s) => `<button type="button" class="slot ${selectedSlot === s ? "active" : ""}" data-slot="${s}">${s}</button>`)
@@ -574,46 +597,45 @@ function bind() {
     const btn = e.target.closest("[data-suggest]");
     if (!btn || !currentId) return;
     const d = DIALOGS.find((x) => x.id === currentId);
-    const s = d.analysis.suggestions[Number(btn.dataset.suggest)];
-    $("#replyField").value = s.text;
-    toast("Подсказка вставлена. Можно править до отправки. Исход (booked/no_answer/refused) пишется после факта.");
+    $("#replyField").value = d.analysis.suggestions[Number(btn.dataset.suggest)].text;
+    toast("Текст в поле ответа. Можно чуть поправить и отправить гостье.");
   });
 
   $("#sendReply").addEventListener("click", () => {
     const text = $("#replyField").value.trim();
-    if (!text) return toast("Вставьте или напишите ответ");
+    if (!text) return toast("Сначала выберите или напишите ответ");
     const d = DIALOGS.find((x) => x.id === currentId);
     d.messages.push({ role: "staff", text, time: "сейчас" });
     d.unanswered = false;
     openDialog(currentId);
-    toast("Сообщение ушло в канал (демо). suggestion.sent_at / edited зафиксированы.");
+    toast("Сообщение ушло гостье. В рабочей версии — прямо в мессенджер.");
   });
 
   $("#createBooking").addEventListener("click", () => {
     if (!currentId) return;
     const d = DIALOGS.find((x) => x.id === currentId);
     openModal(`
-      <h2 style="margin:0 0 8px;font-family:var(--display)">Создать запись</h2>
-      <p class="lead">Клиент: ${escapeHtml(d.client)}. Слот из расписания мастера + буфер. UNIQUE (master_id, starts_at) для new|confirmed.</p>
+      <h2 style="margin:0 0 8px;font-family:var(--display)">Записать гостью</h2>
+      <p class="lead">${escapeHtml(d.client)} — выберите услугу, мастера и время. Пересечений в расписании система не допустит.</p>
       <label class="field-label">Услуга</label>
-      <select id="mService">${SERVICES.map((s) => `<option>${s.name}</option>`).join("")}</select>
+      <select>${SERVICES.map((s) => `<option>${s.name}</option>`).join("")}</select>
       <label class="field-label">Мастер</label>
       <select>${MASTERS.map((m) => `<option>${m.name}</option>`).join("")}</select>
-      <label class="field-label">Старт</label>
+      <label class="field-label">Когда</label>
       <input type="datetime-local" value="2026-10-18T15:30" />
       <div class="row">
-        <button type="button" class="btn primary" id="saveBook">Создать</button>
+        <button type="button" class="btn primary" id="saveBook">Сохранить запись</button>
         <button type="button" class="btn ghost" id="cancelBook">Отмена</button>
       </div>
     `);
     $("#saveBook").onclick = () => {
       d.analysis.stage = "booked";
       d.analysis.lost_sum = 0;
-      d.analysis.outcome = "Создана booking из карточки диалога";
+      d.analysis.outcome = "Гостья записана из переписки";
       d.analysis.quality = "ok";
       closeModal();
       openDialog(currentId);
-      toast("booking создана · suggestion.outcome → booked (демо)");
+      toast("Запись создана. Напоминания уйдут за сутки и за 2 часа.");
     };
     $("#cancelBook").onclick = closeModal;
   });
@@ -626,14 +648,16 @@ function bind() {
   $("#bookingsTable").addEventListener("click", (e) => {
     const btn = e.target.closest("[data-noshow]");
     if (!btn) return;
-    BOOKINGS[Number(btn.dataset.noshow)].status = "no_show";
-    BOOKINGS[Number(btn.dataset.noshow)].remind = "неявка (демо)";
+    const i = Number(btn.dataset.noshow);
+    BOOKINGS[i].status = "no_show";
+    BOOKINGS[i].statusLabel = "Неявка";
+    BOOKINGS[i].remind = "Отметили, что не пришла";
     renderReminders();
-    toast("Статус no_show · попадёт в метрику неявок");
+    toast("Неявка учтена — видно в «Как идут продажи»");
   });
 
-  $("#addService").onclick = () => toast("В проде — форма услуги в settings + Alembic не нужен для строк");
-  $("#addMaster").onclick = () => toast("В проде — master.schedule JSONB");
+  $("#addService").onclick = () => toast("В рабочей версии здесь откроется форма услуги и цены");
+  $("#addMaster").onclick = () => toast("В рабочей версии — график мастера и услуги, которые делает");
 
   $("#bookSlots").addEventListener("click", (e) => {
     const s = e.target.closest("[data-slot]");
@@ -643,45 +667,45 @@ function bind() {
   });
 
   $("#bookSubmit").onclick = () => {
-    if (!selectedSlot) return toast("Выберите окно");
-    if (!$("#bookConsent").checked) return toast("Нужно согласие на обработку ПДн");
-    if (!$("#bookName").value.trim() || !$("#bookPhone").value.trim()) return toast("Имя и телефон");
-    toast("Запись создана (демо). Напоминания 24 ч и 2 ч встанут в очередь.");
+    if (!selectedSlot) return toast("Выберите удобное время");
+    if (!$("#bookConsent").checked) return toast("Нужно согласие на обработку данных для записи");
+    if (!$("#bookName").value.trim() || !$("#bookPhone").value.trim()) return toast("Укажите имя и телефон");
+    toast("Готово! Запись принята. Перед визитом придёт напоминание.");
   };
 
   $("#pasteFill").onclick = () => {
-    $("#pasteArea").value = `Клиент: Здравствуйте! Сколько стоит окрашивание корней?
-Админ: От 3500
-Клиент: В прайсе от 4500… На субботу есть окно?
-Админ: Уточню и напишу
-Клиент: Жду второй день`;
+    $("#pasteArea").value = `Гость: Здравствуйте! Сколько стоит окрашивание корней?
+Администратор: От 3500
+Гость: В прайсе от 4500… На субботу есть окно?
+Администратор: Уточню и напишу
+Гость: Жду второй день`;
   };
 
   $("#pasteAnalyze").onclick = async () => {
-    if (!$("#pasteArea").value.trim()) return toast("Вставьте переписку");
+    if (!$("#pasteArea").value.trim()) return toast("Вставьте текст переписки");
     const box = $("#standResult");
     box.hidden = false;
-    box.innerHTML = `<p class="muted">Очередь: ingest → rules → llm (timeout 20 с) → analysis…</p>`;
+    box.innerHTML = `<p class="muted">Читаем диалог: скорость ответов, прайс, не закрыли ли запись…</p>`;
     await wait(1200);
-    box.innerHTML = renderAnalysis(DIALOGS[0].analysis) + `<p class="tiny muted mt">Контракт JSON стабилен: stage, want, outcome, reasons[], lost_sum, admin_score, next_step, suggestions[], engine, quality</p>`;
-    toast("Готовый разбор прочитан из analysis, не посчитан в HTTP");
+    box.innerHTML = renderAnalysis(DIALOGS[0].analysis);
+    toast("Готово — ниже разбор понятным языком");
   };
 
   $$(".period-switch .chip").forEach((c) =>
     c.addEventListener("click", () => {
       $$(".period-switch .chip").forEach((x) => x.classList.toggle("active", x === c));
-      toast(`Период: ${c.dataset.period} дней (агрегаты из SQL/кэша 5 мин)`);
+      toast(c.dataset.period === "7" ? "Показали неделю" : "Показали месяц");
     })
   );
 
   $("#roleSelect").onchange = () => {
     const role = $("#roleSelect").value;
-    $("#roleHint").textContent = `роль: ${role}`;
-    if (role === "master") toast("Мастер видит свои записи/диалоги, не всю ленту (правило ТЗ)");
-    else toast(`Сессия как ${role}`);
+    $("#roleHint").textContent = `сейчас: ${ROLE_LABEL[role]}`;
+    if (role === "master") toast("Мастер видит свои записи и своих гостей, не все переписки салона");
+    else toast(`Открыли кабинет как ${ROLE_LABEL[role]}`);
   };
 
-  $("#salonSelect").onchange = () => toast(`salon_id переключён (демо): ${$("#salonSelect").value}`);
+  $("#salonSelect").onchange = () => toast(`Салон: ${$("#salonSelect").value}`);
 
   $("#modalClose").onclick = closeModal;
   $("#modal").addEventListener("click", (e) => {
