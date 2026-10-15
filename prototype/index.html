@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ресепшн+ — прототип UI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"><span></span></span>
+        <div>
+          <div class="brand-name">Ресепшн+</div>
+          <div class="brand-sub">прототип 2026 · без API</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button type="button" class="nav-item active" data-view="inbox">Инбокс</button>
+        <button type="button" class="nav-item" data-view="analytics">Аналитика</button>
+        <button type="button" class="nav-item" data-view="reminders">Записи на день</button>
+        <button type="button" class="nav-item" data-view="settings">Настройки</button>
+        <button type="button" class="nav-item" data-view="channels">Каналы</button>
+        <button type="button" class="nav-item" data-view="booking">Публичная запись</button>
+        <button type="button" class="nav-item" data-view="stand">Стенд разбора</button>
+      </nav>
+
+      <div class="salon-switch">
+        <label>Салон</label>
+        <select id="salonSelect">
+          <option>Лаванда · Москва</option>
+          <option>Линия · Казань</option>
+        </select>
+        <label class="mt-sm">Роль (демо)</label>
+        <select id="roleSelect">
+          <option value="owner">owner — владелец</option>
+          <option value="admin">admin — администратор</option>
+          <option value="master">master — мастер</option>
+        </select>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <h1 id="viewTitle">Инбокс</h1>
+        <div class="topbar-meta">
+          <span class="pill pill-demo">демо · очередь разбора</span>
+          <span class="muted" id="roleHint">роль: owner</span>
+        </div>
+      </header>
+
+      <!-- INBOX -->
+      <section class="view active" id="view-inbox">
+        <div class="filters" id="inboxFilters">
+          <button type="button" class="chip active" data-filter="all">Все</button>
+          <button type="button" class="chip" data-filter="unanswered">Без ответа</button>
+          <button type="button" class="chip" data-filter="hot">Стадия hot</button>
+          <button type="button" class="chip" data-filter="lost">lost / упущено</button>
+          <button type="button" class="chip" data-filter="telegram">Telegram</button>
+          <button type="button" class="chip" data-filter="vk">VK</button>
+          <button type="button" class="chip" data-filter="admin">Мои (admin)</button>
+        </div>
+        <div class="split inbox-split">
+          <div class="dialog-list" id="dialogList"></div>
+          <div class="dialog-pane" id="dialogPane">
+            <div class="empty-pane muted" id="emptyPane">Выберите диалог слева</div>
+            <div id="dialogContent" hidden>
+              <div class="dialog-header" id="dialogHeader"></div>
+              <div class="dialog-body">
+                <div class="messages" id="messages"></div>
+                <aside class="side-panel">
+                  <div class="panel-block" id="analysisPanel">
+                    <div class="panel-head">
+                      <h3>Разбор</h3>
+                      <button type="button" class="btn ghost sm" id="reanalyzeBtn">Разобрать заново</button>
+                    </div>
+                    <div id="analysisBody"></div>
+                  </div>
+                  <div class="panel-block">
+                    <h3>Подсказки ответа</h3>
+                    <p class="tiny muted">Человек отправляет сам. Автоотправки нет.</p>
+                    <div id="suggestions"></div>
+                  </div>
+                  <div class="panel-block">
+                    <h3>Ответ</h3>
+                    <textarea id="replyField" rows="4" placeholder="Текст ответа…"></textarea>
+                    <div class="row">
+                      <button type="button" class="btn primary" id="sendReply">Отправить в канал (демо)</button>
+                      <button type="button" class="btn ghost" id="createBooking">Создать запись</button>
+                    </div>
+                  </div>
+                </aside>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ANALYTICS -->
+      <section class="view" id="view-analytics">
+        <div class="period-switch">
+          <button type="button" class="chip active" data-period="7">7 дней</button>
+          <button type="button" class="chip" data-period="30">30 дней</button>
+        </div>
+        <div class="metrics" id="metrics"></div>
+        <div class="grid-2 mt">
+          <div class="card">
+            <h2>Причины потерь</h2>
+            <p class="tiny muted">доля и сумма по коду · формула: Σ lost_sum / доля диалогов</p>
+            <table class="table" id="reasonsTable"></table>
+          </div>
+          <div class="card">
+            <h2>Рейтинг администраторов</h2>
+            <p class="tiny muted">admin_score из правил (1–5), не из ИИ</p>
+            <table class="table" id="adminsTable"></table>
+          </div>
+        </div>
+        <div class="card mt">
+          <h2>Формулы метрик</h2>
+          <ul class="rules" id="formulasList"></ul>
+        </div>
+      </section>
+
+      <!-- REMINDERS -->
+      <section class="view" id="view-reminders">
+        <div class="card">
+          <h2>Записи на сегодня</h2>
+          <p class="lead">Напоминания за 24 ч и 2 ч · неявка через 30 мин после старта</p>
+          <table class="table" id="bookingsTable"></table>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section class="view" id="view-settings">
+        <div class="grid-2">
+          <div class="card">
+            <h2>Услуги и цены</h2>
+            <table class="table" id="servicesTable"></table>
+            <button type="button" class="btn ghost" id="addService">Добавить услугу (демо)</button>
+          </div>
+          <div class="card">
+            <h2>Мастера и график</h2>
+            <div id="mastersList"></div>
+            <button type="button" class="btn ghost mt" id="addMaster">Добавить мастера (демо)</button>
+          </div>
+          <div class="card">
+            <h2>Пользователи и роли</h2>
+            <table class="table" id="usersTable"></table>
+          </div>
+          <div class="card">
+            <h2>Лимит ИИ салона</h2>
+            <p class="lead">salon.limits · при 80% предупреждение, при 100% только правила</p>
+            <div class="progress"><div class="progress-bar" id="aiBar" style="width:62%"></div></div>
+            <p class="muted" id="aiUsage">62% · 1 240 / 2 000 ₽ в месяц (демо)</p>
+            <div class="promo mt">Движок: rules + llm · fallback на rules при таймауте 20 с</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CHANNELS -->
+      <section class="view" id="view-channels">
+        <p class="lead pad">По ТЗ: только официальные API. Личный WhatsApp (QR) и личный Telegram (userbot) — не подключаем.</p>
+        <div class="channels" id="channels"></div>
+      </section>
+
+      <!-- PUBLIC BOOKING -->
+      <section class="view" id="view-booking">
+        <div class="card narrow">
+          <h2>Онлайн-запись · Лаванда</h2>
+          <p class="lead">Клиент: услуга → мастер → окно → имя и телефон + согласие 152-ФЗ</p>
+          <label class="field-label">Услуга</label>
+          <select id="bookService"></select>
+          <label class="field-label">Мастер</label>
+          <select id="bookMaster">
+            <option value="any">Любой свободный</option>
+          </select>
+          <label class="field-label">Окно</label>
+          <div class="slots" id="bookSlots"></div>
+          <label class="field-label">Имя</label>
+          <input id="bookName" type="text" placeholder="Анна" />
+          <label class="field-label">Телефон</label>
+          <input id="bookPhone" type="tel" placeholder="+7…" />
+          <label class="check">
+            <input type="checkbox" id="bookConsent" />
+            Согласие на обработку персональных данных
+          </label>
+          <div class="row">
+            <button type="button" class="btn primary" id="bookSubmit">Записаться (демо)</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- STAND -->
+      <section class="view" id="view-stand">
+        <div class="card narrow">
+          <h2>Стенд: разобрать свой диалог</h2>
+          <p class="lead">Как в ТЗ: продающий стенд + тест промптов. Разбор ставится в очередь (имитация 1.2 с).</p>
+          <textarea id="pasteArea" rows="12" placeholder="Клиент: …
+Админ: …"></textarea>
+          <div class="row">
+            <button type="button" class="btn primary" id="pasteAnalyze">Поставить в очередь разбора</button>
+            <button type="button" class="btn ghost" id="pasteFill">Подставить пример</button>
+          </div>
+          <div id="standResult" class="analysis-card mt" hidden></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="modal" hidden aria-hidden="true">
+    <div class="modal" role="dialog">
+      <button type="button" class="modal-close" id="modalClose" aria-label="Закрыть">×</button>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+  <div class="toast" id="toast" hidden></div>
+  <script src="app.js"></script>
+</body>
+</html>
