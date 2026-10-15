@@ -25,3 +25,11 @@ open prototype/index.html
 | Стенд | Вставка переписки → «очередь разбора» |
 
 Эмодзи в UI нет (требование ТЗ).
+
+## Публичная версия
+
+После включения GitHub Pages (Settings → Pages → Branch: `gh-pages` / root):
+
+**https://kimilyaeduardovich-wq.github.io/avito-tg-notifier/**
+
+Исходники публичной ветки: `gh-pages` (статика из этой папки).
