@@ -1,5 +1,7 @@
 /* Ресепшн+ — демо на языке салона красоты. Без реальных интеграций. */
 
+const SESSION_KEY = "resepshn_session";
+
 const STAGE = {
   cold: "Ещё присматривается",
   warm: "Интересуется",
@@ -705,7 +707,16 @@ function bind() {
     else toast(`Открыли кабинет как ${ROLE_LABEL[role]}`);
   };
 
-  $("#salonSelect").onchange = () => toast(`Салон: ${$("#salonSelect").value}`);
+  $("#salonSelect").onchange = () => {
+    const salon = $("#salonSelect").value;
+    toast(`Салон: ${salon}`);
+    const s = getSession();
+    if (s) {
+      s.salon = salon;
+      saveSession(s);
+      paintAccount(s);
+    }
+  };
 
   $("#modalClose").onclick = closeModal;
   $("#modal").addEventListener("click", (e) => {
@@ -713,7 +724,126 @@ function bind() {
   });
 }
 
-function init() {
+function getSession() {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveSession(session) {
+  const payload = JSON.stringify(session);
+  sessionStorage.setItem(SESSION_KEY, payload);
+  if (session.remember) localStorage.setItem(SESSION_KEY, payload);
+  else localStorage.removeItem(SESSION_KEY);
+}
+
+function clearSession() {
+  sessionStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(SESSION_KEY);
+}
+
+function paintAccount(session) {
+  const name = session.name || "Владелец";
+  const salon = session.salon || "Лаванда · Москва";
+  const login = session.login || "";
+  $("#accountName").textContent = name;
+  $("#accountMeta").textContent = `${salon}${login ? ` · ${login}` : ""}`;
+  $("#accountSub").textContent = "кабинет салона";
+  const opt = [...$("#salonSelect").options].find((o) => o.value === salon || o.textContent === salon);
+  if (opt) $("#salonSelect").value = opt.value;
+  if (session.role && $("#roleSelect").querySelector(`option[value="${session.role}"]`)) {
+    $("#roleSelect").value = session.role;
+    $("#roleHint").textContent = `сейчас: ${ROLE_LABEL[session.role]}`;
+  }
+}
+
+function showApp(session) {
+  paintAccount(session);
+  $("#authGate").hidden = true;
+  $("#appShell").hidden = false;
+  document.body.classList.add("is-authed");
+}
+
+function showAuth() {
+  $("#authGate").hidden = false;
+  $("#appShell").hidden = true;
+  document.body.classList.remove("is-authed");
+}
+
+function enterCabinet(session) {
+  saveSession(session);
+  showApp(session);
+  toast(`Добро пожаловать, ${session.name}. Кабинет «${session.salon.split("·")[0].trim()}» открыт`);
+}
+
+function guessNameFromLogin(login) {
+  const raw = (login || "").trim();
+  if (raw.includes("@")) {
+    const local = raw.split("@")[0];
+    if (/^[a-zа-яё._-]+$/i.test(local)) {
+      const part = local.split(/[._-]/)[0];
+      return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+    }
+  }
+  return "Владелец";
+}
+
+function bindAuth() {
+  $("#togglePass").onclick = () => {
+    const input = $("#loginPass");
+    const show = input.type === "password";
+    input.type = show ? "text" : "password";
+    $("#togglePass").textContent = show ? "скрыть" : "показать";
+  };
+
+  $("#loginForm").onsubmit = (e) => {
+    e.preventDefault();
+    const login = $("#loginPhone").value.trim();
+    const pass = $("#loginPass").value;
+    if (!login || pass.length < 4) {
+      toast("Укажите телефон или почту и пароль от 4 символов");
+      return;
+    }
+    const btn = $("#loginSubmit");
+    btn.disabled = true;
+    btn.textContent = "Открываем кабинет…";
+    setTimeout(() => {
+      enterCabinet({
+        login,
+        name: guessNameFromLogin(login),
+        salon: "Лаванда · Москва",
+        role: "owner",
+        remember: $("#loginRemember").checked,
+        at: Date.now(),
+      });
+      btn.disabled = false;
+      btn.textContent = "Войти в кабинет";
+    }, 650);
+  };
+
+  $("#demoLogin").onclick = () => {
+    enterCabinet({
+      login: "+7 926 000-11-22",
+      name: "Ольга",
+      salon: "Лаванда · Москва",
+      role: "owner",
+      remember: true,
+      at: Date.now(),
+    });
+  };
+
+  $("#logoutBtn").onclick = () => {
+    clearSession();
+    showAuth();
+    $("#loginPass").value = "";
+    toast("Вы вышли. Чтобы снова открыть кабинет — войдите");
+  };
+}
+
+function bootAppData() {
   bind();
   renderDialogList();
   renderChannels();
@@ -722,6 +852,14 @@ function init() {
   renderSettings();
   renderBookingPublic();
   openDialog(DIALOGS[0].id);
+}
+
+function init() {
+  bindAuth();
+  bootAppData();
+  const session = getSession();
+  if (session) showApp(session);
+  else showAuth();
 }
 
 init();

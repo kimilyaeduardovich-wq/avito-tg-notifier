@@ -10,14 +10,61 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="app">
+  <!-- Вход в кабинет — без него сервис закрыт -->
+  <div class="auth-gate" id="authGate">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <span class="brand-mark" aria-hidden="true"><span></span></span>
+        <div>
+          <div class="brand-name">Ресепшн+</div>
+          <div class="brand-sub">кабинет салона красоты</div>
+        </div>
+      </div>
+
+      <h1 class="auth-title">Войдите в свой салон</h1>
+      <p class="auth-lead">После входа откроются переписки, записи, прайс и разбор диалогов — всё по вашему аккаунту.</p>
+
+      <form class="auth-form" id="loginForm" autocomplete="on">
+        <label class="field-label" for="loginPhone">Телефон или почта</label>
+        <input id="loginPhone" name="login" type="text" inputmode="email" placeholder="+7 900 000-00-00 или anna@lavanda.ru" required />
+
+        <label class="field-label" for="loginPass">Пароль</label>
+        <div class="auth-pass-row">
+          <input id="loginPass" name="password" type="password" placeholder="Ваш пароль" required minlength="4" />
+          <button type="button" class="linkish" id="togglePass" aria-label="Показать пароль">показать</button>
+        </div>
+
+        <label class="check auth-remember">
+          <input type="checkbox" id="loginRemember" checked />
+          Оставаться в кабинете на этом устройстве
+        </label>
+
+        <button type="submit" class="btn primary auth-submit" id="loginSubmit">Войти в кабинет</button>
+      </form>
+
+      <div class="auth-divider"><span>или быстро для демо</span></div>
+
+      <button type="button" class="btn ghost auth-demo" id="demoLogin">
+        Войти как владелец салона «Лаванда»
+      </button>
+
+      <p class="auth-hint muted">Демо: любой телефон/почта и пароль от 4 символов — или кнопка выше. В рабочей версии вход по SMS и приглашению от владельца.</p>
+    </div>
+  </div>
+
+  <div class="app" id="appShell" hidden>
     <aside class="sidebar">
       <div class="brand">
         <span class="brand-mark" aria-hidden="true"><span></span></span>
         <div>
           <div class="brand-name">Ресепшн+</div>
-          <div class="brand-sub">для салона красоты · демо</div>
+          <div class="brand-sub" id="accountSub">ваш кабинет</div>
         </div>
+      </div>
+
+      <div class="account-chip" id="accountChip">
+        <div class="account-chip-name" id="accountName">—</div>
+        <div class="account-chip-meta muted" id="accountMeta">—</div>
       </div>
 
       <nav class="nav">
@@ -42,6 +89,7 @@
           <option value="admin">Администратор</option>
           <option value="master">Мастер</option>
         </select>
+        <button type="button" class="btn ghost sm logout-btn" id="logoutBtn">Выйти из кабинета</button>
       </div>
     </aside>
 
