@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ресепшн+ — помощник администратора салона</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Вход в кабинет — без него сервис закрыт -->
+  <div class="auth-gate" id="authGate">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <span class="brand-mark" aria-hidden="true"><span></span></span>
+        <div>
+          <div class="brand-name">Ресепшн+</div>
+          <div class="brand-sub">кабинет салона красоты</div>
+        </div>
+      </div>
+
+      <h1 class="auth-title">Войдите в свой салон</h1>
+      <p class="auth-lead">После входа откроются переписки, записи, прайс и разбор диалогов — всё по вашему аккаунту.</p>
+
+      <form class="auth-form" id="loginForm" autocomplete="on">
+        <label class="field-label" for="loginPhone">Телефон или почта</label>
+        <input id="loginPhone" name="login" type="text" inputmode="email" placeholder="+7 900 000-00-00 или anna@lavanda.ru" required />
+
+        <label class="field-label" for="loginPass">Пароль</label>
+        <div class="auth-pass-row">
+          <input id="loginPass" name="password" type="password" placeholder="Ваш пароль" required minlength="4" />
+          <button type="button" class="linkish" id="togglePass" aria-label="Показать пароль">показать</button>
+        </div>
+
+        <label class="check auth-remember">
+          <input type="checkbox" id="loginRemember" checked />
+          Оставаться в кабинете на этом устройстве
+        </label>
+
+        <button type="submit" class="btn primary auth-submit" id="loginSubmit">Войти в кабинет</button>
+      </form>
+
+      <div class="auth-divider"><span>или быстро для демо</span></div>
+
+      <button type="button" class="btn ghost auth-demo" id="demoLogin">
+        Войти как владелец салона «Лаванда»
+      </button>
+
+      <p class="auth-hint muted">Демо: любой телефон/почта и пароль от 4 символов — или кнопка выше. В рабочей версии вход по SMS и приглашению от владельца.</p>
+    </div>
+  </div>
+
+  <div class="app" id="appShell" hidden>
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"><span></span></span>
+        <div>
+          <div class="brand-name">Ресепшн+</div>
+          <div class="brand-sub" id="accountSub">ваш кабинет</div>
+        </div>
+      </div>
+
+      <div class="account-chip" id="accountChip">
+        <div class="account-chip-name" id="accountName">—</div>
+        <div class="account-chip-meta muted" id="accountMeta">—</div>
+      </div>
+
+      <nav class="nav">
+        <button type="button" class="nav-item active" data-view="inbox">Переписки</button>
+        <button type="button" class="nav-item" data-view="analytics">Как идут продажи</button>
+        <button type="button" class="nav-item" data-view="reminders">Записи на сегодня</button>
+        <button type="button" class="nav-item" data-view="settings">Салон и прайс</button>
+        <button type="button" class="nav-item" data-view="channels">Откуда пишут</button>
+        <button type="button" class="nav-item" data-view="booking">Онлайн-запись</button>
+        <button type="button" class="nav-item" data-view="stand">Разобрать свой чат</button>
+      </nav>
+
+      <div class="salon-switch">
+        <label>Ваш салон</label>
+        <select id="salonSelect">
+          <option>Лаванда · Москва</option>
+          <option>Линия · Казань</option>
+        </select>
+        <label class="mt-sm">Кто смотрит</label>
+        <select id="roleSelect">
+          <option value="owner">Владелец</option>
+          <option value="admin">Администратор</option>
+          <option value="master">Мастер</option>
+        </select>
+        <button type="button" class="btn ghost sm logout-btn" id="logoutBtn">Выйти из кабинета</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <h1 id="viewTitle">Переписки</h1>
+        <div class="topbar-meta">
+          <span class="pill pill-demo">демо без реальных чатов</span>
+          <span class="muted" id="roleHint">сейчас: владелец</span>
+        </div>
+      </header>
+
+      <!-- INBOX -->
+      <section class="view active" id="view-inbox">
+        <div class="filters" id="inboxFilters">
+          <button type="button" class="chip active" data-filter="all">Все гости</button>
+          <button type="button" class="chip" data-filter="unanswered">Ждут ответа</button>
+          <button type="button" class="chip" data-filter="hot">Почти записались</button>
+          <button type="button" class="chip" data-filter="lost">Упустили выручку</button>
+          <button type="button" class="chip" data-filter="telegram">Telegram</button>
+          <button type="button" class="chip" data-filter="vk">ВКонтакте</button>
+          <button type="button" class="chip" data-filter="admin">Мои диалоги</button>
+        </div>
+        <div class="split inbox-split">
+          <div class="dialog-list" id="dialogList"></div>
+          <div class="dialog-pane" id="dialogPane">
+            <div class="empty-pane muted" id="emptyPane">Выберите переписку слева — справа будет разбор и готовые ответы</div>
+            <div id="dialogContent" hidden>
+              <div class="dialog-header" id="dialogHeader"></div>
+              <div class="dialog-body">
+                <div class="messages" id="messages"></div>
+                <aside class="side-panel">
+                  <div class="panel-block" id="analysisPanel">
+                    <div class="panel-head">
+                      <h3>Что происходит с гостем</h3>
+                      <button type="button" class="btn ghost sm" id="reanalyzeBtn">Обновить разбор</button>
+                    </div>
+                    <div id="analysisBody"></div>
+                  </div>
+                  <div class="panel-block">
+                    <h3>Что ответить</h3>
+                    <p class="tiny muted">Выберите вариант, поправьте при необходимости и отправьте сами. Сами гостю не пишем.</p>
+                    <div id="suggestions"></div>
+                  </div>
+                  <div class="panel-block">
+                    <h3>Ваш ответ гостю</h3>
+                    <textarea id="replyField" rows="4" placeholder="Сюда попадёт готовый текст…"></textarea>
+                    <div class="row">
+                      <button type="button" class="btn primary" id="sendReply">Отправить гостю</button>
+                      <button type="button" class="btn ghost" id="createBooking">Записать на услугу</button>
+                    </div>
+                  </div>
+                </aside>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ANALYTICS -->
+      <section class="view" id="view-analytics">
+        <div class="period-switch">
+          <button type="button" class="chip active" data-period="7">За неделю</button>
+          <button type="button" class="chip" data-period="30">За месяц</button>
+        </div>
+        <div class="metrics" id="metrics"></div>
+        <div class="grid-2 mt">
+          <div class="card">
+            <h2>Почему гости не доходят до записи</h2>
+            <p class="tiny muted">Сколько раз встречалось и сколько денег это стоило салону</p>
+            <table class="table" id="reasonsTable"></table>
+          </div>
+          <div class="card">
+            <h2>Как работают администраторы</h2>
+            <p class="tiny muted">Оценка по скорости, прайсу и доведению до записи — от 1 до 5</p>
+            <table class="table" id="adminsTable"></table>
+          </div>
+        </div>
+        <div class="card mt">
+          <h2>Как мы это считаем</h2>
+          <ul class="rules" id="formulasList"></ul>
+        </div>
+      </section>
+
+      <!-- REMINDERS -->
+      <section class="view" id="view-reminders">
+        <div class="card">
+          <h2>Записи на сегодня</h2>
+          <p class="lead">Напоминания гостю за сутки и за 2 часа. Если не пришла — можно отметить неявку.</p>
+          <table class="table" id="bookingsTable"></table>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section class="view" id="view-settings">
+        <div class="grid-2">
+          <div class="card">
+            <h2>Прайс и услуги</h2>
+            <p class="tiny muted">Именно отсюда берутся цены в ответах — не «на глаз»</p>
+            <table class="table" id="servicesTable"></table>
+            <button type="button" class="btn ghost" id="addService">Добавить услугу</button>
+          </div>
+          <div class="card">
+            <h2>Мастера и окна</h2>
+            <p class="tiny muted">График, шаг записи и перерыв между гостями</p>
+            <div id="mastersList"></div>
+            <button type="button" class="btn ghost mt" id="addMaster">Добавить мастера</button>
+          </div>
+          <div class="card">
+            <h2>Команда салона</h2>
+            <table class="table" id="usersTable"></table>
+          </div>
+          <div class="card">
+            <h2>Лимит умных разборов</h2>
+            <p class="lead">Сколько разборов «с подсказками» можно сделать в этом месяце. Если лимит кончится — останется быстрая проверка по правилам салона.</p>
+            <div class="progress"><div class="progress-bar" id="aiBar" style="width:62%"></div></div>
+            <p class="muted" id="aiUsage">Использовано 62% · 1 240 из 2 000 ₽</p>
+            <div class="promo mt">Сначала система смотрит тайминги и прайс, потом предлагает смысл и тексты ответов</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CHANNELS -->
+      <section class="view" id="view-channels">
+        <p class="lead pad">Подключите, откуда гости обычно пишут в салон. Личный WhatsApp с телефона и личный Telegram не подключаем — так безопаснее для номера салона.</p>
+        <div class="channels" id="channels"></div>
+      </section>
+
+      <!-- PUBLIC BOOKING -->
+      <section class="view" id="view-booking">
+        <div class="card narrow">
+          <h2>Запись онлайн · салон «Лаванда»</h2>
+          <p class="lead">Гость выбирает услугу, мастера и время — как на вашем сайте или в шапке соцсетей</p>
+          <label class="field-label">Услуга</label>
+          <select id="bookService"></select>
+          <label class="field-label">Мастер</label>
+          <select id="bookMaster">
+            <option value="any">Кто свободен</option>
+          </select>
+          <label class="field-label">Удобное время</label>
+          <div class="slots" id="bookSlots"></div>
+          <label class="field-label">Как вас зовут</label>
+          <input id="bookName" type="text" placeholder="Анна" />
+          <label class="field-label">Телефон</label>
+          <input id="bookPhone" type="tel" placeholder="+7…" />
+          <label class="check">
+            <input type="checkbox" id="bookConsent" />
+            Согласна на обработку персональных данных для записи
+          </label>
+          <div class="row">
+            <button type="button" class="btn primary" id="bookSubmit">Записаться</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- STAND -->
+      <section class="view" id="view-stand">
+        <div class="card narrow">
+          <h2>Вставьте переписку с гостем</h2>
+          <p class="lead">Скопируйте чат из мессенджера — система покажет, почему не записались и что ответить. Удобно проверить, как работает разбор, до подключения каналов.</p>
+          <textarea id="pasteArea" rows="12" placeholder="Гость: Здравствуйте, сколько стоит окрашивание?
+Администратор: …
+Гость: …"></textarea>
+          <div class="row">
+            <button type="button" class="btn primary" id="pasteAnalyze">Разобрать переписку</button>
+            <button type="button" class="btn ghost" id="pasteFill">Подставить пример из салона</button>
+          </div>
+          <div id="standResult" class="analysis-card mt" hidden></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="modal" hidden aria-hidden="true">
+    <div class="modal" role="dialog">
+      <button type="button" class="modal-close" id="modalClose" aria-label="Закрыть">×</button>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+  <div class="toast" id="toast" hidden></div>
+  <script src="app.js"></script>
+</body>
+</html>
