@@ -112,6 +112,37 @@ jobs:
           echo "=== telegram compare ==="
           curl -4 -sS --connect-timeout 10 --max-time 15 -o /dev/null -w "tg_http=%{http_code} time=%{time_total}\n" https://api.telegram.org || true
 
+      - uses: actions/setup-python@v5
+        if: steps.mode.outputs.mode == 'diagnose'
+        with:
+          python-version: "3.12"
+
+      - name: Diagnose httpx vs curl
+        if: steps.mode.outputs.mode == 'diagnose'
+        run: |
+          pip -q install 'httpx==0.28.1'
+          python - <<'PY'
+          import socket, time, httpx
+          host="api.avito.ru"
+          print("getaddrinfo:", socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)[:6])
+          for label, kwargs in [
+              ("default", {}),
+              ("http1_only", {"http2": False}),
+              ("ipv4_transport", {"transport": httpx.HTTPTransport(local_address="0.0.0.0")}),
+          ]:
+              t0=time.time()
+              try:
+                  with httpx.Client(timeout=httpx.Timeout(20.0, connect=10.0), **kwargs) as c:
+                      r=c.post("https://api.avito.ru/token", data={
+                          "grant_type":"client_credentials",
+                          "client_id":"dummy",
+                          "client_secret":"dummy",
+                      })
+                  print(f"httpx[{label}] status={r.status_code} t={time.time()-t0:.2f} body={r.text[:120]}")
+              except Exception as e:
+                  print(f"httpx[{label}] FAIL {type(e).__name__}: {e} t={time.time()-t0:.2f}")
+          PY
+
       - name: Stop after diagnose
         if: steps.mode.outputs.mode == 'diagnose'
         run: echo "diagnose done" && exit 0
