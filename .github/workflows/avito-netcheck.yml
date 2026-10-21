@@ -5,30 +5,34 @@ on:
 
 jobs:
   netcheck:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
-      - name: Egress + DNS + curl api.avito.ru
+      - name: curl + httpx on ${{ matrix.os }}
         run: |
           set +e
-          echo "=== runner ==="
-          uname -a
-          echo "=== egress IP ==="
-          curl -4 -sS --max-time 10 https://ifconfig.me || true
-          echo
-          curl -4 -sS --max-time 10 https://api.ipify.org || true
-          echo
-          echo "=== DNS api.avito.ru ==="
-          getent hosts api.avito.ru || true
-          dig +short api.avito.ru A || true
-          dig +short api.avito.ru AAAA || true
-          echo "=== TCP 443 ==="
-          timeout 15 bash -c 'echo >/dev/tcp/api.avito.ru/443' && echo tcp_ok || echo tcp_fail
-          echo "=== curl -v token endpoint (no secrets) ==="
-          curl -4 -v --connect-timeout 15 --max-time 30 -o /tmp/avito_body -w "http_code=%{http_code} time=%{time_total}\n" \
-            -X POST "https://api.avito.ru/token" \
-            -d "grant_type=client_credentials&client_id=dummy&client_secret=dummy" 2>&1 | tail -40
-          echo "=== body head ==="
-          head -c 300 /tmp/avito_body; echo
-          echo "=== compare telegram ==="
-          curl -4 -sS --connect-timeout 10 --max-time 15 -o /dev/null -w "tg_http=%{http_code} time=%{time_total}\n" https://api.telegram.org || true
+          echo "os=${{ matrix.os }}"
+          curl -4 -sS --max-time 10 https://ifconfig.me; echo
+          curl -4 -sS --connect-timeout 15 --max-time 30 -o /tmp/b -w "curl_http=%{http_code} t=%{time_total}\n" \
+            -X POST "https://api.avito.ru/token" -d "grant_type=client_credentials&client_id=dummy&client_secret=dummy"
+          head -c 120 /tmp/b; echo
+          pip -q install 'httpx==0.28.1'
+          python3 - <<'PY'
+          import time, httpx
+          ok=fail=0
+          for i in range(5):
+              t0=time.time()
+              try:
+                  with httpx.Client(timeout=httpx.Timeout(20.0, connect=10.0)) as c:
+                      r=c.post("https://api.avito.ru/token", data={"grant_type":"client_credentials","client_id":"dummy","client_secret":"dummy"})
+                  print(f"try{i} ok status={r.status_code} t={time.time()-t0:.2f}")
+                  ok+=1
+              except Exception as e:
+                  print(f"try{i} FAIL {type(e).__name__} t={time.time()-t0:.2f}")
+                  fail+=1
+          print(f"SUMMARY ok={ok} fail={fail}")
+          PY
