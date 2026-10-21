@@ -15,6 +15,7 @@ on:
         options:
           - loop
           - once
+          - diagnose
       send_test_alert:
         description: "Отправить тестовое сообщение в TG"
         required: false
@@ -26,7 +27,7 @@ on:
     - cron: "0,30 * * * *"
 
 concurrency:
-  group: avito-poll
+  group: ${{ github.event.inputs.mode == 'diagnose' && format('avito-diag-{0}', github.run_id) || 'avito-poll' }}
   cancel-in-progress: false
 
 permissions:
@@ -69,6 +70,7 @@ jobs:
           echo "Resolved mode=$MODE test=$TEST event=$EVENT_NAME action=$EVENT_ACTION"
 
       - name: Load seen-state from branch
+        if: steps.mode.outputs.mode != 'diagnose'
         run: |
           mkdir -p data
           if git fetch origin avito-bot-state:avito-bot-state 2>/dev/null; then
@@ -88,15 +90,44 @@ jobs:
             echo "No state branch yet — starting empty"
           fi
 
+      - name: Diagnose Avito network from runner
+        if: steps.mode.outputs.mode == 'diagnose'
+        run: |
+          set +e
+          echo "=== egress IP ==="
+          curl -4 -sS --max-time 10 https://ifconfig.me; echo
+          curl -4 -sS --max-time 10 https://api.ipify.org; echo
+          echo "=== DNS api.avito.ru ==="
+          getent hosts api.avito.ru || true
+          dig +short api.avito.ru A || true
+          dig +short api.avito.ru AAAA || true
+          echo "=== TCP 443 ==="
+          timeout 15 bash -c 'echo >/dev/tcp/api.avito.ru/443' && echo tcp_ok || echo tcp_fail
+          echo "=== curl POST /token (dummy creds) ==="
+          curl -4 -v --connect-timeout 15 --max-time 30 -o /tmp/avito_body -w "http_code=%{http_code} time=%{time_total}\n" \
+            -X POST "https://api.avito.ru/token" \
+            -d "grant_type=client_credentials&client_id=dummy&client_secret=dummy" 2>&1 | tail -50
+          echo "=== body ==="
+          head -c 400 /tmp/avito_body; echo
+          echo "=== telegram compare ==="
+          curl -4 -sS --connect-timeout 10 --max-time 15 -o /dev/null -w "tg_http=%{http_code} time=%{time_total}\n" https://api.telegram.org || true
+
+      - name: Stop after diagnose
+        if: steps.mode.outputs.mode == 'diagnose'
+        run: echo "diagnose done" && exit 0
+
       - uses: actions/setup-python@v5
+        if: steps.mode.outputs.mode != 'diagnose'
         with:
           python-version: "3.12"
           cache: pip
 
       - name: Install deps
+        if: steps.mode.outputs.mode != 'diagnose'
         run: pip install -r requirements.txt
 
       - name: Write .env from secrets
+        if: steps.mode.outputs.mode != 'diagnose'
         env:
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           ACCOUNT_1_NAME: ${{ secrets.ACCOUNT_1_NAME }}
@@ -137,6 +168,7 @@ jobs:
         run: python -m scripts.run_once
 
       - name: Poll loop every 2 minutes
+        id: poll
         if: steps.mode.outputs.mode == 'loop'
         env:
           POLL_INTERVAL_SEC: "120"
@@ -148,7 +180,8 @@ jobs:
           python -m scripts.run_loop
 
       - name: Save seen-state to branch
-        if: always()
+        if: always() && steps.mode.outputs.mode != 'diagnose'
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -156,8 +189,9 @@ jobs:
           chmod +x scripts/push_state.sh
           bash scripts/push_state.sh data/seen.json
 
+      # Chain even if final state push flaked — poll itself already succeeded
       - name: Chain next loop (self-heal continuous poll)
-        if: steps.mode.outputs.mode == 'loop' && success()
+        if: steps.mode.outputs.mode == 'loop' && steps.poll.outcome == 'success'
         env:
           TOKEN: ${{ secrets.GH_DISPATCH_TOKEN }}
         run: |
