@@ -17,13 +17,18 @@ SA_NAME="avito-tg-poller-sa"
 TRIGGER_NAME="avito-tg-every-minute"
 KEY_FILE="$ROOT/data/yc_state_key.json"
 
+# Ensure yc profile is complete (Cloud Shell often misses endpoint/cloud-id).
+yc config set endpoint api.cloud.yandex.net:443 >/dev/null
+if [ -z "$(yc config get cloud-id 2>/dev/null || true)" ]; then
+  yc config set cloud-id "${YC_CLOUD_ID:-b1gibv98bqrmvdmhomm8}"
+fi
 FOLDER_ID="$(yc config get folder-id 2>/dev/null || true)"
 if [ -z "$FOLDER_ID" ]; then
   FOLDER_ID="${YC_FOLDER_ID:-b1g302pgg5aano245jk5}"
   yc config set folder-id "$FOLDER_ID"
 fi
 BUCKET="avito-tg-state-${FOLDER_ID}"
-echo "folder=$FOLDER_ID bucket=$BUCKET"
+echo "folder=$FOLDER_ID bucket=$BUCKET cloud=$(yc config get cloud-id 2>/dev/null || true)"
 
 sa_json_id() {
   "$PY" -c 'import json,sys; print(json.load(sys.stdin)["id"])' 2>/dev/null || true

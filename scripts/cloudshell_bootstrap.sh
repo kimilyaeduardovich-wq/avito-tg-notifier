@@ -42,11 +42,24 @@ curl -fsSL -o data/seen.json \
   "https://raw.githubusercontent.com/kimilyaeduardovich-wq/avito-tg-notifier/avito-bot-state/seen.json" \
   || echo '{"accounts":{}}' > data/seen.json
 
-# Cloud Shell иногда без folder-id в yc config
+# Cloud Shell: без cloud/folder/endpoint yc падает с "endpoint should be set"
+yc config set endpoint api.cloud.yandex.net:443
+yc config set cloud-id "${YC_CLOUD_ID:-b1gibv98bqrmvdmhomm8}"
 yc config set folder-id "${YC_FOLDER_ID:-b1g302pgg5aano245jk5}"
+
+# ключ S3 между перезапусками, чтобы не плодить access keys
+mkdir -p "$HOME/.avito-tg-notifier"
+if [ -f "$HOME/.avito-tg-notifier/yc_state_key.json" ]; then
+  mkdir -p data
+  cp "$HOME/.avito-tg-notifier/yc_state_key.json" data/yc_state_key.json
+fi
 
 chmod +x scripts/deploy_yandex.sh
 bash scripts/deploy_yandex.sh
+
+if [ -f data/yc_state_key.json ]; then
+  cp data/yc_state_key.json "$HOME/.avito-tg-notifier/yc_state_key.json"
+fi
 
 echo "=== invoke ==="
 yc serverless function invoke --name avito-tg-poller --data '{}' || true
