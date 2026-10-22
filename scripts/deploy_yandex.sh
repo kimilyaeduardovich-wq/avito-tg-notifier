@@ -105,6 +105,9 @@ ENV_ARGS+=(
   --environment "STATE_S3_BUCKET=$BUCKET"
   --environment "STATE_S3_ACCESS_KEY=$ACCESS_KEY"
   --environment "STATE_S3_SECRET_KEY=$SECRET_KEY"
+  # Таймер YC = раз в минуту; внутри — 3 опроса с паузой 20с (задержка ~20с).
+  --environment "POLL_ROUNDS=3"
+  --environment "POLL_EVERY_SEC=20"
 )
 
 if ! yc serverless function get --name "$FUNC_NAME" >/dev/null 2>&1; then
@@ -117,10 +120,10 @@ yc serverless function version create \
   --runtime python312 \
   --entrypoint index.handler \
   --memory 128m \
-  --execution-timeout 50s \
+  --execution-timeout 60s \
   --source-path "$STAGE" \
   "${ENV_ARGS[@]}" >/dev/null
-echo "deployed new version"
+echo "deployed new version (poll every ~20s inside 1-min timer)"
 
 if ! yc serverless trigger get --name "$TRIGGER_NAME" >/dev/null 2>&1; then
   yc serverless trigger create timer \
