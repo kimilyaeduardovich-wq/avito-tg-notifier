@@ -1,16 +1,9 @@
-"""Yandex Cloud Function: опрос Авито → Telegram.
-
-Таймер YC умеет минимум раз в минуту, поэтому внутри одного вызова
-делаем несколько раундов с паузой (POLL_ROUNDS × POLL_EVERY_SEC),
-чтобы задержка уведомления была ~20–30 с, а не до минуты.
-"""
+"""Yandex Cloud Function: один цикл опроса Авито → Telegram на каждый вызов таймера."""
 
 from __future__ import annotations
 
 import asyncio
 import logging
-import os
-import time
 
 from app.config import load_accounts
 from app.poller import process_once
@@ -26,26 +19,8 @@ def handler(event, context):
     accounts = load_accounts()
     if not accounts:
         raise RuntimeError("No accounts configured")
-
-    rounds = max(1, int(os.environ.get("POLL_ROUNDS", "3")))
-    every = max(5, int(os.environ.get("POLL_EVERY_SEC", "20")))
-
-    totals = {"notified": 0, "bootstrap": 0}
-    for i in range(rounds):
-        state = asyncio.run(process_once(load_state(), accounts))
-        save_state(state)
-        last = state.get("_last_totals") or {}
-        totals["notified"] += int(last.get("notified") or 0)
-        totals["bootstrap"] += int(last.get("bootstrap") or 0)
-        logging.info(
-            "round %s/%s notified=%s bootstrap=%s",
-            i + 1,
-            rounds,
-            last.get("notified"),
-            last.get("bootstrap"),
-        )
-        if i + 1 < rounds:
-            time.sleep(every)
-
-    logging.info("done notified=%s bootstrap=%s", totals["notified"], totals["bootstrap"])
+    state = asyncio.run(process_once(load_state(), accounts))
+    save_state(state)
+    totals = state.get("_last_totals") or {}
+    logging.info("done notified=%s bootstrap=%s", totals.get("notified"), totals.get("bootstrap"))
     return {"statusCode": 200, "body": totals}
