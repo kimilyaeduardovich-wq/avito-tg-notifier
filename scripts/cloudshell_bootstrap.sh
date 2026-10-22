@@ -42,6 +42,9 @@ curl -fsSL -o data/seen.json \
   "https://raw.githubusercontent.com/kimilyaeduardovich-wq/avito-tg-notifier/avito-bot-state/seen.json" \
   || echo '{"accounts":{}}' > data/seen.json
 
+# Cloud Shell иногда без folder-id в yc config
+yc config set folder-id "${YC_FOLDER_ID:-b1g302pgg5aano245jk5}"
+
 chmod +x scripts/deploy_yandex.sh
 bash scripts/deploy_yandex.sh
 

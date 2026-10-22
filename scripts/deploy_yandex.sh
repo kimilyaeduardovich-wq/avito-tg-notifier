@@ -17,13 +17,28 @@ SA_NAME="avito-tg-poller-sa"
 TRIGGER_NAME="avito-tg-every-minute"
 KEY_FILE="$ROOT/data/yc_state_key.json"
 
-FOLDER_ID="$(yc config get folder-id)"
+FOLDER_ID="$(yc config get folder-id 2>/dev/null || true)"
+if [ -z "$FOLDER_ID" ]; then
+  FOLDER_ID="${YC_FOLDER_ID:-b1g302pgg5aano245jk5}"
+  yc config set folder-id "$FOLDER_ID"
+fi
 BUCKET="avito-tg-state-${FOLDER_ID}"
 echo "folder=$FOLDER_ID bucket=$BUCKET"
 
-SA_ID="$(yc iam service-account get --name "$SA_NAME" --format json 2>/dev/null | "$PY" -c 'import json,sys; print(json.load(sys.stdin)["id"])' || true)"
+sa_json_id() {
+  "$PY" -c 'import json,sys; print(json.load(sys.stdin)["id"])' 2>/dev/null || true
+}
+SA_ID="$(yc iam service-account get --name "$SA_NAME" --format json 2>/dev/null | sa_json_id)"
 if [ -z "$SA_ID" ]; then
-  SA_ID="$(yc iam service-account create --name "$SA_NAME" --format json | "$PY" -c 'import json,sys; print(json.load(sys.stdin)["id"])')"
+  CREATE_OUT="$(yc iam service-account create --name "$SA_NAME" --format json 2>&1)" || {
+    echo "FAILED create SA: $CREATE_OUT"
+    exit 1
+  }
+  SA_ID="$(printf '%s' "$CREATE_OUT" | sa_json_id)"
+  if [ -z "$SA_ID" ]; then
+    echo "FAILED parse SA id: $CREATE_OUT"
+    exit 1
+  fi
   echo "created service account $SA_ID"
 fi
 for ROLE in storage.editor functions.functionInvoker; do
