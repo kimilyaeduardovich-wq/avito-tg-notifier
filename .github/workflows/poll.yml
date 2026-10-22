@@ -22,8 +22,9 @@ on:
         type: boolean
   repository_dispatch:
     types: [avito-poll, avito-poll-loop]
-  schedule:
-    - cron: "0,30 * * * *"
+  # schedule disabled — Yandex Cloud Functions
+  # schedule:
+  #   - cron: "0,30 * * * *"
 
 concurrency:
   group: avito-poll
@@ -35,6 +36,8 @@ permissions:
 
 jobs:
   poll:
+    # DISABLED_FOR_YANDEX: Avito blocked from GH runners; use YC Functions
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 55
     steps:
