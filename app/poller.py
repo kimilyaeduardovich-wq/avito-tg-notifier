@@ -258,13 +258,19 @@ async def process_account(account: Account, state: dict[str, Any]) -> dict[str, 
 
 async def process_once(state: dict[str, Any], accounts: list[Account]) -> dict[str, Any]:
     totals = {"notified": 0, "bootstrap": 0}
-    for account in accounts:
+
+    async def _one(account: Account) -> dict[str, Any]:
         try:
-            stats = await process_account(account, state)
-            totals["notified"] += int(stats.get("notified") or 0)
-            totals["bootstrap"] += int(stats.get("bootstrap") or 0)
+            return await process_account(account, state)
         except Exception:
             logger.exception("[%s] poll cycle failed", account.name)
+            return {}
+
+    # Параллельно по аккаунтам — иначе в Cloud Functions легко упереться в timeout.
+    results = await asyncio.gather(*[_one(a) for a in accounts])
+    for stats in results:
+        totals["notified"] += int(stats.get("notified") or 0)
+        totals["bootstrap"] += int(stats.get("bootstrap") or 0)
     save_state(state)
     state["_last_totals"] = totals
     return state

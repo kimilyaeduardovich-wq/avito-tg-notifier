@@ -116,8 +116,8 @@ yc serverless function version create \
   --function-name "$FUNC_NAME" \
   --runtime python312 \
   --entrypoint index.handler \
-  --memory 128m \
-  --execution-timeout 50s \
+  --memory 256m \
+  --execution-timeout 120s \
   --source-path "$STAGE" \
   "${ENV_ARGS[@]}" >/dev/null
 echo "deployed new version"
