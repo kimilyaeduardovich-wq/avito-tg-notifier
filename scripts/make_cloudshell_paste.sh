@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# На Mac: короткая вставка для Cloud Shell (без seen.json — иначе Shell падает на paste).
+# На Mac: две ОДНОСТРОЧНЫЕ команды для Cloud Shell.
+# Нельзя вставлять set -e / многострочный скрипт в интерактивный Shell —
+# при ошибке сессия закрывается (выглядит как «exit»).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-OUT="${1:-/tmp/avito_cloudshell_paste.sh}"
 FILTERED="$(mktemp)"
 trap 'rm -f "$FILTERED"' EXIT
 
@@ -25,42 +26,33 @@ except ImportError:
             d[k.strip()] = v.strip().strip('"').strip("'")
         return d
 vals = dotenv_values(".env")
-lines = []
-for k, v in vals.items():
-    if v and (k == "TG_CHAT_ID" or k.startswith("ACCOUNT_")):
-        lines.append(f"{k}={v}")
+lines = [f"{k}={v}" for k, v in vals.items() if v and (k == "TG_CHAT_ID" or k.startswith("ACCOUNT_"))]
 out.write_text("\n".join(lines) + "\n")
 print(f"env keys={len(lines)}")
 PY
 
 ENV_B64="$(base64 < "$FILTERED" | tr -d '\n')"
+STEP1="/tmp/avito_step1.sh"
+STEP2="/tmp/avito_step2.sh"
+BOOT_URL="https://raw.githubusercontent.com/kimilyaeduardovich-wq/avito-tg-notifier/fix/avito-netcheck/scripts/cloudshell_bootstrap.sh"
 
-# Короткий скрипт: только env + curl bootstrap с GitHub (без гигантского state).
-cat > "$OUT" <<EOF
-# Ресепшн+/поллер — короткая установка в Cloud Shell. Вставь и Enter.
-set -e
-echo "1/3 пишем ~/avito.env"
-echo "$ENV_B64" | base64 -d > "\$HOME/avito.env"
-chmod 600 "\$HOME/avito.env"
-echo "2/3 качаем bootstrap"
-curl -fsSL -o /tmp/avito_boot.sh \\
-  "https://raw.githubusercontent.com/kimilyaeduardovich-wq/avito-tg-notifier/fix/avito-netcheck/scripts/cloudshell_bootstrap.sh"
-chmod +x /tmp/avito_boot.sh
-echo "3/3 деплой"
-export YC_CLOUD_ID="\${YC_CLOUD_ID:-b1gibv98bqrmvdmhomm8}"
-export YC_FOLDER_ID="\${YC_FOLDER_ID:-b1g302pgg5aano245jk5}"
-export AVITO_BRANCH="\${AVITO_BRANCH:-fix/avito-netcheck}"
-bash /tmp/avito_boot.sh
-echo "OK — не закрывай Shell, пока не увидишь DONE"
+printf '%s\n' "echo '${ENV_B64}' | base64 -d > \"\$HOME/avito.env\" && chmod 600 \"\$HOME/avito.env\" && echo ENV_OK" > "$STEP1"
+printf '%s\n' "curl -fsSL -o /tmp/avito_boot.sh \"${BOOT_URL}\" && bash /tmp/avito_boot.sh" > "$STEP2"
+
+cat > /tmp/avito_cloudshell_STEPS.txt <<EOF
+Cloud Shell — только ОДНА строка за раз (не многострочный скрипт).
+
+1) Сейчас в буфере ШАГ 1 — вставь Cmd+V, Enter.
+   Жди: ENV_OK
+
+2) Потом вставь ШАГ 2 (одна строка):
+$(cat "$STEP2")
+
+Жди: DONE
 EOF
 
-chmod +x "$OUT"
-BYTES=$(wc -c < "$OUT" | tr -d ' ')
-echo "wrote $OUT ($BYTES bytes)"
-if [ "$BYTES" -gt 4000 ]; then
-  echo "WARN: paste still large — Cloud Shell may drop it"
-fi
-if command -v pbcopy >/dev/null 2>&1; then
-  pbcopy < "$OUT"
-  echo "в буфере — Cloud Shell: Cmd+V → Enter"
-fi
+pbcopy < "$STEP1"
+echo "ШАГ 1 в буфере ($(wc -c < "$STEP1" | tr -d ' ') bytes)"
+echo "ШАГ 2:"
+cat "$STEP2"
+echo "инструкция: /tmp/avito_cloudshell_STEPS.txt"
